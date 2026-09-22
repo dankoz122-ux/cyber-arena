@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyber Arena Cloud</title>
+    <title>Cyber Arena Online</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -27,7 +27,6 @@
         canvas { background: #04040c; display: block; }
         #legend { display: flex; justify-content: space-between; width: 1200px; margin-top: 10px; font-size: 11px; background: rgba(6, 6, 14, 0.8); padding: 8px 20px; border: 1px solid #333366; border-radius: 4px; color: #888; }
     </style>
-    <!-- Используем официальный проверенный клиент Socket.io -->
     <script src="https://socket.io"></script>
 </head>
 <body>
@@ -38,7 +37,7 @@
             <div class="bar"><div id="local-hp" class="fill hp-fill"></div></div>
             <div class="bar"><div id="local-cd" class="fill cd-fill"></div></div>
         </div>
-        <div id="connection-status" style="align-self: center; color: #ffaa00; text-shadow: 0 0 5px #ffaa00;">МАТРИЦА СИНХРОНИЗИРУЕТСЯ...</div>
+        <div id="connection-status" style="align-self: center; color: #ffaa00; text-shadow: 0 0 5px #ffaa00;">ПОДКЛЮЧЕНИЕ К ОБЛАКУ...</div>
         <div class="player-info enemy-color" style="text-align: right;">
             <strong>[ВРАГ] Agent_<span id="enemy-id">...</span></strong>
             <div style="margin-top: 4px;">SYNC: <span id="enemy-hp-text">100</span>% | SYS: <span id="enemy-skill">READY</span></div>
@@ -47,20 +46,16 @@
         </div>
     </div>
     <div id="game-container"><canvas id="gameCanvas" width="1200" height="700"></canvas></div>
-    <div id="legend"><span>WASD — Бег | Курсор — Прицел | ЛКМ — Огонь | Shift — Скилл</span><span>Cloud Gaming Engine v7.0</span></div>
+    <div id="legend"><span>WASD — Бег | Курсор — Прицел | ЛКМ — Огонь | Shift — Скилл</span><span>Cloud Gaming v6.5</span></div>
 
     <script>
-        // ФИКС: Явно переводим https:// на wss:// для защиты Render
-        const secureUrl = window.location.origin.replace(/^http/, 'ws');
-                // ЖЕСТКАЯ ПРИВЯЗКА К ССЫЛКЕ ТВОЕГО СЕРВЕРА НА RENDER
         const socket = io('https://onrender.com', {
             transports: ['websocket'],
             secure: true,
             reconnection: true,
             reconnectionAttempts: 10,
             reconnectionDelay: 1000
-
-        }); 
+        });
 
         const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
         let WORLD = { width: 4000, height: 2400 }; let localId = null;
@@ -105,7 +100,6 @@
             const now = Date.now();
             if (keys['MouseLeft'] && now - localPlayer.lastShot > localPlayer.shotDelay) { socket.emit('shoot', { x: localPlayer.x + localPlayer.aimX * localPlayer.radius, y: localPlayer.y + localPlayer.aimY * localPlayer.radius, vx: localPlayer.aimX * 13, vy: localPlayer.aimY * 13, damage: localPlayer.damage, ownerColor: localPlayer.color, color: localPlayer.bulletColor }); localPlayer.lastShot = now; }
 
-            items.forEach((item, index) => { if (Math.hypot(localPlayer.x - item.x, localPlayer.y - item.y) < localPlayer.radius + 13) { if (item.type === 'heal') localPlayer.hp = Math.min(100, localPlayer.hp + 25); if (item.type === 'damage') localPlayer.damage += 4; if (item.type === 'speed') localPlayer.speed += 0.6; items.splice(index, 1); } });
             if (localPlayer.hp <= 0) { localPlayer.hp = 100; localPlayer.x = Math.random()*3000 + 500; localPlayer.y = Math.random()*2000 + 200; }
             socket.emit('playerUpdate', { x: localPlayer.x, y: localPlayer.y, aimX: localPlayer.aimX, aimY: localPlayer.aimY, skillActive: localPlayer.skillActive, skillCD: localPlayer.skillCD, hp: localPlayer.hp });
         }
@@ -124,7 +118,6 @@
 
             anomalies.forEach(a => { let cls = {toxic: 'rgba(255, 0, 85, 0.05)', sludge: 'rgba(255, 200, 0, 0.04)', heal: 'rgba(0, 255, 85, 0.04)'}, strs = {toxic: '#ff0055', sludge: '#ffaa00', heal: '#00ff55'}; ctx.fillStyle = cls[a.type]; ctx.beginPath(); ctx.arc(a.x, a.y, a.radius, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = strs[a.type]; ctx.lineWidth = 2; ctx.stroke(); });
             ctx.fillStyle = '#050510'; ctx.strokeStyle = '#2d2d66'; ctx.lineWidth = 3; buildings.forEach(b => { ctx.fillRect(b.x, b.y, b.w, b.h); ctx.strokeRect(b.x, b.y, b.w, b.h); });
-            items.forEach(i => { ctx.beginPath(); ctx.arc(i.x, i.y, 13, 0, Math.PI*2); ctx.fillStyle = i.color; ctx.fill(); });
             bullets.forEach(b => { ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = b.color; ctx.lineWidth = 4; ctx.strokeStyle = b.color; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx * 1.5, b.y - b.vy * 1.5); ctx.stroke(); ctx.restore(); });
             particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.alpha -= p.decay; ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill(); ctx.restore(); if(p.alpha<=0) particles.splice(i,1); });
 
