@@ -1,7 +1,10 @@
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http, { cors: { origin: "*" } });
+const io = require('socket.io')(http, { 
+    cors: { origin: "*" },
+    transports: ['websocket'] // Принудительно отключаем long-polling на сервере
+});
 const path = require('path');
 
 app.get('/', (req, res) => {
@@ -13,20 +16,22 @@ let players = {};
 let bullets = [];
 let items = [];
 
+// Процедурная генерация неоновых аномалий
 let anomalies = [];
 const anomalyTypes = [{type:'toxic'}, {type:'sludge'}, {type:'heal'}];
 for (let i = 0; i < 18; i++) {
     anomalies.push({
-        x: Math.random() * (WORLD.width - 400) + 200, y: Math.random() * (WORLD.height - 400) + 200, radius: Math.random() * 200 + 130,
+        x: Math.random() * (WORLD.width - 500) + 250, y: Math.random() * (WORLD.height - 500) + 250, radius: Math.random() * 180 + 120,
         type: anomalyTypes[Math.floor(Math.random() * anomalyTypes.length)].type
     });
 }
 
+// Процедурная генерация кибер-домов
 let buildings = [];
-for (let i = 0; i < 48; i++) {
+for (let i = 0; i < 46; i++) {
     buildings.push({
         x: Math.random() * (WORLD.width - 300) + 150, y: Math.random() * (WORLD.height - 300) + 150,
-        w: Math.random() * 160 + 90, h: Math.random() * 160 + 90
+        w: Math.random() * 150 + 80, h: Math.random() * 150 + 80
     });
 }
 
@@ -97,7 +102,7 @@ setInterval(() => {
         }
     });
 
-    if (items.length < 25 && Math.random() < 0.015) {
+    if (items.length < 30 && Math.random() < 0.015) {
         let ix = Math.random() * (WORLD.width - 60) + 30;
         let iy = Math.random() * (WORLD.height - 60) + 30;
         if (!buildings.some(b => ix > b.x && ix < b.x + b.w && iy > b.y && iy < b.y + b.h)) {
@@ -110,4 +115,4 @@ setInterval(() => {
 }, 1000 / 60);
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => { console.log(`Кибер-сервер запущен на порту ${PORT}`); });
+http.listen(PORT, '0.0.0.0', () => { console.log(`Server running on port ${PORT}`); });
