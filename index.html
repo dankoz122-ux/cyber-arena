@@ -52,11 +52,14 @@
     <script>
         // ФИКС: Явно переводим https:// на wss:// для защиты Render
         const secureUrl = window.location.origin.replace(/^http/, 'ws');
-        const socket = io(secureUrl, {
-            transports: ['websocket', 'polling'], // Добавляем умный запасной вариант, если сокет режется
-            rememberUpgrade: true,
+                // ЖЕСТКАЯ ПРИВЯЗКА К ССЫЛКЕ ТВОЕГО СЕРВЕРА НА RENDER
+        const socket = io('https://onrender.com', {
+            transports: ['websocket'],
             secure: true,
-            rejectUnauthorized: false
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000
+
         }); 
 
         const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
