@@ -61,7 +61,8 @@ io.on('connection', (socket) => {
     players[socket.id] = {
         id: socket.id, x: spawn.x, y: spawn.y, radius: 20,
         color: isFirst ? '#ff0055' : '#00ffcc', bulletColor: isFirst ? '#ff66aa' : '#66ffea',
-        aimX: isFirst ? 1 : -1, aimY: 0, hp: 100, maxHp: 100, speed: 5.5, damage: 12, lvl: 1, skillActive: false, skillCD: 0
+        aimX: isFirst ? 1 : -1, aimY: 0, hp: 100, maxHp: 100, speed: 5.5, damage: 12, lvl: 1, credits: 0,
+        skillActive: false, skillCD: 0
     };
 
     socket.emit('init', { id: socket.id, world: WORLD, anomalies, buildings, players, creeps });
@@ -69,13 +70,12 @@ io.on('connection', (socket) => {
 
     socket.on('playerUpdate', (data) => {
         if (players[socket.id]) {
-            // Ограничиваем координаты игрока на сервере для безопасности
             let boundedX = Math.max(20, Math.min(WORLD.width - 20, data.x));
             let boundedY = Math.max(20, Math.min(WORLD.height - 20, data.y));
             Object.assign(players[socket.id], {
                 x: boundedX, y: boundedY, aimX: data.aimX, aimY: data.aimY,
                 skillActive: data.skillActive, skillCD: data.skillCD,
-                hp: data.hp, speed: data.speed, damage: data.damage, lvl: data.lvl
+                hp: data.hp, speed: data.speed, damage: data.damage, lvl: data.lvl, credits: data.credits
             });
         }
     });
@@ -115,7 +115,6 @@ setInterval(() => {
                 }
             }
         }
-        // Ограничиваем крипов рамками карты
         c.x = Math.max(c.radius, Math.min(WORLD.width - c.radius, c.x));
         c.y = Math.max(c.radius, Math.min(WORLD.height - c.radius, c.y));
         buildings.forEach(b => {
@@ -133,13 +132,20 @@ setInterval(() => {
 
         let hitWall = buildings.some(w => b.x > w.x && b.x < w.x + w.w && b.y > w.y && b.y < w.y + w.h);
         if (hitWall || b.x < 0 || b.x > WORLD.width || b.y < 0 || b.y > WORLD.height) {
+            if(b.isExplosive) io.emit('aoeExplosion', {x: b.x, y: b.y, r: 85, damage: b.damage, ownerId: b.ownerId});
             bullets.splice(index, 1); return;
         }
 
         for (let i = 0; i < creeps.length; i++) {
             let c = creeps[i];
             if (b.ownerColor !== '#888888' && Math.hypot(b.x - c.x, b.y - c.y) < c.radius) {
-                c.hp -= b.damage; c.state = 'chase'; c.targetId = b.ownerId;
+                if(b.isExplosive) {
+                    io.emit('aoeExplosion', {x: b.x, y: b.y, r: 85, damage: b.damage, ownerId: b.ownerId});
+                } else {
+                    c.hp -= b.damage;
+                    if(players[b.ownerId] && b.hasLeech) players[b.ownerId].hp = Math.min(100, players[b.ownerId].hp + (b.damage * 0.15));
+                }
+                c.state = 'chase'; c.targetId = b.ownerId;
                 if (c.hp <= 0) {
                     io.emit('creepKilled', { creepId: c.id, killerSocketId: b.ownerId, x: c.x, y: c.y });
                     creeps.splice(i, 1);
@@ -156,7 +162,13 @@ setInterval(() => {
             let p = players[id];
             if (p.color !== b.ownerColor && Math.hypot(b.x - p.x, b.y - p.y) < p.radius) {
                 io.emit('bulletExplode', {x: b.x, y: b.y, color: p.color});
-                io.to(id).emit('damageTaken', b.damage);
+                if(b.isExplosive) {
+                    io.emit('aoeExplosion', {x: b.x, y: b.y, r: 85, damage: b.damage, ownerId: b.ownerId});
+                } else {
+                    io.to(id).emit('damageTaken', b.damage);
+                    if(players[b.ownerId] && b.hasLeech) players[b.ownerId].hp = Math.min(100, players[b.ownerId].hp + (b.damage * 0.15));
+                    if(players[b.ownerId]) players[b.ownerId].credits += 2; // Кредиты за хит
+                }
                 bullets.splice(index, 1); break;
             }
         }
