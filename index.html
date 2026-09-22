@@ -37,7 +37,7 @@
             <div class="bar"><div id="local-hp" class="fill hp-fill"></div></div>
             <div class="bar"><div id="local-cd" class="fill cd-fill"></div></div>
         </div>
-        <div id="connection-status" style="align-self: center; color: #ffaa00; text-shadow: 0 0 5px #ffaa00;">МАТРИЦА СИНХРОНИЗИРУЕТСЯ...</div>
+        <div id="connection-status" style="align-self: center; color: #ffaa00; text-shadow: 0 0 5px #ffaa00;">ПОДКЛЮЧЕНИЕ К ОБЛАКУ...</div>
         <div class="player-info enemy-color" style="text-align: right;">
             <strong>[ВРАГ] Agent_<span id="enemy-id">...</span></strong>
             <div style="margin-top: 4px;">SYNC: <span id="enemy-hp-text">100</span>% | SYS: <span id="enemy-skill">READY</span></div>
@@ -46,10 +46,10 @@
         </div>
     </div>
     <div id="game-container"><canvas id="gameCanvas" width="1200" height="700"></canvas></div>
-    <div id="legend"><span>WASD — Бег | Мышь — Прицел | ЛКМ — Огонь | Левый Shift — Скилл</span><span>Render Cloud Matrix v1.5</span></div>
+    <div id="legend"><span>WASD — Бег | Курсор — Прицел | ЛКМ — Огонь | Shift — Скилл</span><span>Cloud Gaming v6.5</span></div>
 
     <script>
-        // ИСПРАВЛЕНИЕ: Переключаем ссылку на защищенный WSS протокол WebSocket без long-polling
+        // Подключаемся напрямую через WebSocket-протокол хостинга
         const socket = io(window.location.origin, {
             transports: ['websocket'],
             upgrade: false
@@ -71,13 +71,13 @@
             localId = data.id; WORLD = data.world; anomalies = data.anomalies; buildings = data.buildings; players = data.players;
             localPlayer.x = players[localId].x; localPlayer.y = players[localId].y; localPlayer.color = players[localId].color; localPlayer.bulletColor = players[localId].bulletColor;
             document.getElementById('local-id').innerText = localId.substring(0, 4);
-            document.getElementById('connection-status').innerText = "ОНЛАЙН ПОДКЛЮЧЕНО"; document.getElementById('connection-status').style.color = "#00ffcc";
+            document.getElementById('connection-status').innerText = "ОНЛАЙН СИНХРОНИЗАЦИЯ"; document.getElementById('connection-status').style.color = "#00ffcc";
         });
         socket.on('stateUpdate', data => { bullets = data.bullets; items = data.items; for (let id in data.players) { if (id !== localId) { players[id] = data.players[id]; document.getElementById('enemy-id').innerText = id.substring(0, 4); document.getElementById('connection-status').style.display = "none"; } } });
         socket.on('damageTaken', dmg => { if (localPlayer.color === '#00ffcc' && localPlayer.skillActive) return; localPlayer.hp = Math.max(0, localPlayer.hp - dmg); });
-        socket.on('bulletExplode', data => { for (let i = 0; i < 14; i++) particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, radius: Math.random()*3+1, color: data.color, alpha: 1, decay: Math.random()*0.03+0.015 }); });
+        socket.on('bulletExplode', data => { for (let i = 0; i < 12; i++) particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, radius: Math.random()*3+1, color: data.color, alpha: 1, decay: Math.random()*0.03+0.02 }); });
         socket.on('playerLeft', id => { delete players[id]; document.getElementById('connection-status').innerText = "ВРАГ ВЫШЕЛ"; document.getElementById('connection-status').style.display = "block"; });
-                function isCollidingWithBuilding(px, py, radius, b) { let cX = Math.max(b.x, Math.min(px, b.x + b.w)), cY = Math.max(b.y, Math.min(py, b.y + b.h)); return (px - cX)**2 + (py - cY)**2 < radius**2; }
+        function isCollidingWithBuilding(px, py, radius, b) { let cX = Math.max(b.x, Math.min(px, b.x + b.w)), cY = Math.max(b.y, Math.min(py, b.y + b.h)); return (px - cX)**2 + (py - cY)**2 < radius**2; }
 
         function updateLocalMovement() {
             if (!localId) return; let currentSpeed = localPlayer.speed;
@@ -98,7 +98,6 @@
             const now = Date.now();
             if (keys['MouseLeft'] && now - localPlayer.lastShot > localPlayer.shotDelay) { socket.emit('shoot', { x: localPlayer.x + localPlayer.aimX * localPlayer.radius, y: localPlayer.y + localPlayer.aimY * localPlayer.radius, vx: localPlayer.aimX * 13, vy: localPlayer.aimY * 13, damage: localPlayer.damage, ownerColor: localPlayer.color, color: localPlayer.bulletColor }); localPlayer.lastShot = now; }
 
-            items.forEach((item, index) => { if (Math.hypot(localPlayer.x - item.x, localPlayer.y - item.y) < localPlayer.radius + 13) { if (item.type === 'heal') localPlayer.hp = Math.min(100, localPlayer.hp + 25); if (item.type === 'damage') localPlayer.damage += 4; if (item.type === 'speed') localPlayer.speed += 0.6; items.splice(index, 1); } });
             if (localPlayer.hp <= 0) { localPlayer.hp = 100; localPlayer.x = Math.random()*3000 + 500; localPlayer.y = Math.random()*2000 + 200; }
             socket.emit('playerUpdate', { x: localPlayer.x, y: localPlayer.y, aimX: localPlayer.aimX, aimY: localPlayer.aimY, skillActive: localPlayer.skillActive, skillCD: localPlayer.skillCD, hp: localPlayer.hp });
         }
@@ -132,4 +131,3 @@
     </script>
 </body>
 </html>
-
