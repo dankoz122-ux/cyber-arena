@@ -4,7 +4,6 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http, { cors: { origin: "*" } });
 const path = require('path');
 
-// Раздаем файл index.html при зашествии на сайт
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -14,7 +13,6 @@ let players = {};
 let bullets = [];
 let items = [];
 
-// Процедурная генерация карты на сервере
 let anomalies = [];
 const anomalyTypes = [{type:'toxic'}, {type:'sludge'}, {type:'heal'}];
 for (let i = 0; i < 18; i++) {
@@ -77,7 +75,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Серверный игровой цикл (60 кадров в секунду)
 setInterval(() => {
     bullets.forEach((b, index) => {
         let sandevistanActive = Object.values(players).some(p => p.color === '#ff0055' && p.skillActive);
@@ -112,6 +109,5 @@ setInterval(() => {
     io.emit('stateUpdate', { players, bullets, items });
 }, 1000 / 60);
 
-// Порт берется из окружения хостинга автоматически
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => { console.log(`Кибер-сервер запущен на порту ${PORT}`); });
