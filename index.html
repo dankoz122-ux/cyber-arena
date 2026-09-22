@@ -17,8 +17,8 @@
             box-shadow: 0 0 15px rgba(0, 255, 204, 0.4); border-radius: 4px; backdrop-filter: blur(5px);
         }
         .player-info { width: 40%; font-size: 14px; }
-        .local-color { color: #ff0055; text-shadow: 0 0 8px #ff0055; }
-        .enemy-color { color: #00ffcc; text-shadow: 0 0 8px #00ffcc; }
+        .local-color { color: #ff0055; text-shadow: 0 0 8px #ff0055, 0 0 20px #ff0055; }
+        .enemy-color { color: #00ffcc; text-shadow: 0 0 8px #00ffcc, 0 0 20px #00ffcc; }
         .bar { background: #111122; height: 12px; border: 1px solid #333355; margin-top: 4px; border-radius: 2px; overflow: hidden; }
         .fill { height: 100%; width: 100%; }
         .hp-fill { background: linear-gradient(90deg, #ff0055, #ff5588); box-shadow: 0 0 10px #ff0055; }
@@ -37,7 +37,7 @@
             <div class="bar"><div id="local-hp" class="fill hp-fill"></div></div>
             <div class="bar"><div id="local-cd" class="fill cd-fill"></div></div>
         </div>
-        <div id="connection-status" style="align-self: center; color: #ffaa00; text-shadow: 0 0 5px #ffaa00;">ПОДКЛЮЧЕНИЕ К ОБЛАКУ...</div>
+        <div id="connection-status" style="align-self: center; color: #ffaa00; text-shadow: 0 0 5px #ffaa00;">МАТРИЦА СИНХРОНИЗИРУЕТСЯ...</div>
         <div class="player-info enemy-color" style="text-align: right;">
             <strong>[ВРАГ] Agent_<span id="enemy-id">...</span></strong>
             <div style="margin-top: 4px;">SYNC: <span id="enemy-hp-text">100</span>% | SYS: <span id="enemy-skill">READY</span></div>
@@ -46,9 +46,10 @@
         </div>
     </div>
     <div id="game-container"><canvas id="gameCanvas" width="1200" height="700"></canvas></div>
-    <div id="legend"><span>WASD — Бег | Курсор — Прицел | ЛКМ — Огонь | Shift — Скилл</span><span>Cloud Gaming Engine v5.1</span></div>
+    <div id="legend"><span>WASD — Бег | Мышь — Прицел | ЛКМ — Огонь | Левый Shift — Скилл</span><span>Render Cloud Matrix v1.5</span></div>
 
     <script>
+        // ИСПРАВЛЕНИЕ: Переключаем ссылку на защищенный WSS протокол WebSocket без long-polling
         const socket = io(window.location.origin, {
             transports: ['websocket'],
             upgrade: false
@@ -70,91 +71,13 @@
             localId = data.id; WORLD = data.world; anomalies = data.anomalies; buildings = data.buildings; players = data.players;
             localPlayer.x = players[localId].x; localPlayer.y = players[localId].y; localPlayer.color = players[localId].color; localPlayer.bulletColor = players[localId].bulletColor;
             document.getElementById('local-id').innerText = localId.substring(0, 4);
-            document.getElementById('connection-status').innerText = "ОНЛАЙН СИНХРОНИЗАЦИЯ"; document.getElementById('connection-status').style.color = "#00ffcc";
+            document.getElementById('connection-status').innerText = "ОНЛАЙН ПОДКЛЮЧЕНО"; document.getElementById('connection-status').style.color = "#00ffcc";
         });
         socket.on('stateUpdate', data => { bullets = data.bullets; items = data.items; for (let id in data.players) { if (id !== localId) { players[id] = data.players[id]; document.getElementById('enemy-id').innerText = id.substring(0, 4); document.getElementById('connection-status').style.display = "none"; } } });
         socket.on('damageTaken', dmg => { if (localPlayer.color === '#00ffcc' && localPlayer.skillActive) return; localPlayer.hp = Math.max(0, localPlayer.hp - dmg); });
-        socket.on('bulletExplode', data => { for (let i = 0; i < 12; i++) particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, radius: Math.random()*3+1, color: data.color, alpha: 1, decay: Math.random()*0.03+0.02 }); });
+        socket.on('bulletExplode', data => { for (let i = 0; i < 14; i++) particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, radius: Math.random()*3+1, color: data.color, alpha: 1, decay: Math.random()*0.03+0.015 }); });
         socket.on('playerLeft', id => { delete players[id]; document.getElementById('connection-status').innerText = "ВРАГ ВЫШЕЛ"; document.getElementById('connection-status').style.display = "block"; });
-        <!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyber Arena Online</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0; padding: 0; background-color: #030308; color: #fff;
-            font-family: 'Courier New', Courier, monospace; overflow: hidden;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
-        }
-        #ui {
-            display: flex; justify-content: space-between; width: 1200px; margin-bottom: 12px;
-            background: rgba(6, 6, 14, 0.85); padding: 15px; border: 2px solid #00ffcc;
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.4); border-radius: 4px; backdrop-filter: blur(5px);
-        }
-        .player-info { width: 40%; font-size: 14px; }
-        .local-color { color: #ff0055; text-shadow: 0 0 8px #ff0055; }
-        .enemy-color { color: #00ffcc; text-shadow: 0 0 8px #00ffcc; }
-        .bar { background: #111122; height: 12px; border: 1px solid #333355; margin-top: 4px; border-radius: 2px; overflow: hidden; }
-        .fill { height: 100%; width: 100%; }
-        .hp-fill { background: linear-gradient(90deg, #ff0055, #ff5588); box-shadow: 0 0 10px #ff0055; }
-        .cd-fill { background: linear-gradient(90deg, #d200ff, #ff00ee); box-shadow: 0 0 10px #ff00ee; width: 0%; }
-        #game-container { position: relative; width: 1200px; height: 700px; border: 3px solid #ff0055; box-shadow: 0 0 25px rgba(255, 0, 85, 0.3); border-radius: 4px; overflow: hidden; }
-        canvas { background: #04040c; display: block; }
-        #legend { display: flex; justify-content: space-between; width: 1200px; margin-top: 10px; font-size: 11px; background: rgba(6, 6, 14, 0.8); padding: 8px 20px; border: 1px solid #333366; border-radius: 4px; color: #888; }
-    </style>
-    <script src="https://socket.io"></script>
-</head>
-<body>
-    <div id="ui">
-        <div class="player-info local-color">
-            <strong>[ВЫ] Agent_<span id="local-id">...</span></strong>
-            <div style="margin-top: 4px;">SYNC: <span id="local-hp-text">100</span>% | SYS: <span id="local-skill">READY</span></div>
-            <div class="bar"><div id="local-hp" class="fill hp-fill"></div></div>
-            <div class="bar"><div id="local-cd" class="fill cd-fill"></div></div>
-        </div>
-        <div id="connection-status" style="align-self: center; color: #ffaa00; text-shadow: 0 0 5px #ffaa00;">ПОДКЛЮЧЕНИЕ К ОБЛАКУ...</div>
-        <div class="player-info enemy-color" style="text-align: right;">
-            <strong>[ВРАГ] Agent_<span id="enemy-id">...</span></strong>
-            <div style="margin-top: 4px;">SYNC: <span id="enemy-hp-text">100</span>% | SYS: <span id="enemy-skill">READY</span></div>
-            <div class="bar"><div id="enemy-hp" class="fill hp-fill"></div></div>
-            <div class="bar"><div id="enemy-cd" class="fill cd-fill"></div></div>
-        </div>
-    </div>
-    <div id="game-container"><canvas id="gameCanvas" width="1200" height="700"></canvas></div>
-    <div id="legend"><span>WASD — Бег | Курсор — Прицел | ЛКМ — Огонь | Shift — Скилл</span><span>Cloud Gaming Engine v5.1</span></div>
-
-    <script>
-        const socket = io(window.location.origin, {
-            transports: ['websocket'],
-            upgrade: false
-        }); 
-
-        const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
-        let WORLD = { width: 4000, height: 2400 }; let localId = null;
-        let anomalies = [], buildings = [], players = {}, bullets = [], items = [], particles = []; const keys = {};
-        let mouseWorldX = 0, mouseWorldY = 0, currentCamX = 0, currentCamY = 0;
-        const controls = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', skill: 'ShiftLeft' };
-        let localPlayer = { x: 2000, y: 1200, radius: 20, speed: 5.5, baseSpeed: 5.5, damage: 12, hp: 100, skillCD: 0, skillActive: false, skillTimer: 0, dirX: 0, dirY: 0, aimX: 1, aimY: 0, lastShot: 0, shotDelay: 220 };
-
-        window.addEventListener('mousemove', e => { const r = canvas.getBoundingClientRect(); mouseWorldX = e.clientX - r.left + currentCamX; mouseWorldY = e.clientY - r.top + currentCamY; });
-        window.addEventListener('mousedown', e => { if (e.button === 0) keys['MouseLeft'] = true; });
-        window.addEventListener('mouseup', e => { if (e.button === 0) keys['MouseLeft'] = false; });
-        window.addEventListener('keydown', e => keys[e.code] = true); window.addEventListener('keyup', e => keys[e.code] = false);
-
-        socket.on('init', data => {
-            localId = data.id; WORLD = data.world; anomalies = data.anomalies; buildings = data.buildings; players = data.players;
-            localPlayer.x = players[localId].x; localPlayer.y = players[localId].y; localPlayer.color = players[localId].color; localPlayer.bulletColor = players[localId].bulletColor;
-            document.getElementById('local-id').innerText = localId.substring(0, 4);
-            document.getElementById('connection-status').innerText = "ОНЛАЙН СИНХРОНИЗАЦИЯ"; document.getElementById('connection-status').style.color = "#00ffcc";
-        });
-        socket.on('stateUpdate', data => { bullets = data.bullets; items = data.items; for (let id in data.players) { if (id !== localId) { players[id] = data.players[id]; document.getElementById('enemy-id').innerText = id.substring(0, 4); document.getElementById('connection-status').style.display = "none"; } } });
-        socket.on('damageTaken', dmg => { if (localPlayer.color === '#00ffcc' && localPlayer.skillActive) return; localPlayer.hp = Math.max(0, localPlayer.hp - dmg); });
-        socket.on('bulletExplode', data => { for (let i = 0; i < 12; i++) particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, radius: Math.random()*3+1, color: data.color, alpha: 1, decay: Math.random()*0.03+0.02 }); });
-        socket.on('playerLeft', id => { delete players[id]; document.getElementById('connection-status').innerText = "ВРАГ ВЫШЕЛ"; document.getElementById('connection-status').style.display = "block"; });
-        function isCollidingWithBuilding(px, py, radius, b) { let cX = Math.max(b.x, Math.min(px, b.x + b.w)), cY = Math.max(b.y, Math.min(py, b.y + b.h)); return (px - cX)**2 + (py - cY)**2 < radius**2; }
+                function isCollidingWithBuilding(px, py, radius, b) { let cX = Math.max(b.x, Math.min(px, b.x + b.w)), cY = Math.max(b.y, Math.min(py, b.y + b.h)); return (px - cX)**2 + (py - cY)**2 < radius**2; }
 
         function updateLocalMovement() {
             if (!localId) return; let currentSpeed = localPlayer.speed;
@@ -176,7 +99,7 @@
             if (keys['MouseLeft'] && now - localPlayer.lastShot > localPlayer.shotDelay) { socket.emit('shoot', { x: localPlayer.x + localPlayer.aimX * localPlayer.radius, y: localPlayer.y + localPlayer.aimY * localPlayer.radius, vx: localPlayer.aimX * 13, vy: localPlayer.aimY * 13, damage: localPlayer.damage, ownerColor: localPlayer.color, color: localPlayer.bulletColor }); localPlayer.lastShot = now; }
 
             items.forEach((item, index) => { if (Math.hypot(localPlayer.x - item.x, localPlayer.y - item.y) < localPlayer.radius + 13) { if (item.type === 'heal') localPlayer.hp = Math.min(100, localPlayer.hp + 25); if (item.type === 'damage') localPlayer.damage += 4; if (item.type === 'speed') localPlayer.speed += 0.6; items.splice(index, 1); } });
-            if (localPlayer.hp <= 0) { alert("ВЫ ПОГИБЛИ!"); localPlayer.hp = 100; localPlayer.x = Math.random()*3000 + 500; localPlayer.y = Math.random()*2000 + 200; }
+            if (localPlayer.hp <= 0) { localPlayer.hp = 100; localPlayer.x = Math.random()*3000 + 500; localPlayer.y = Math.random()*2000 + 200; }
             socket.emit('playerUpdate', { x: localPlayer.x, y: localPlayer.y, aimX: localPlayer.aimX, aimY: localPlayer.aimY, skillActive: localPlayer.skillActive, skillCD: localPlayer.skillCD, hp: localPlayer.hp });
         }
 
