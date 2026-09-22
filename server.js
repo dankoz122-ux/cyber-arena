@@ -3,11 +3,10 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, { 
     cors: { 
-        origin: "https://onrender.com",
-        methods: ["GET", "POST"],
-        credentials: true
+        origin: "*", // Полностью открываем доступ для браузеров
+        methods: ["GET", "POST"]
     },
-    transports: ['websocket']
+    transports: ['websocket', 'polling'] // Разрешаем запасной вариант подключения, если сокеты режутся
 });
 const path = require('path');
 
