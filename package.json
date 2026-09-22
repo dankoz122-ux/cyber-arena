@@ -1,7 +1,7 @@
 {
-  "name": "cyber-arena-online",
-  "version": "1.0.1",
-  "description": "Cyberpunk PvP Browser Game with WSS Secure Fix",
+  "name": "cyber-arena-render",
+  "version": "1.1.0",
+  "description": "Cyberpunk PvP Real-Time Cloud Game",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
