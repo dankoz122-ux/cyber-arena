@@ -1,7 +1,7 @@
 {
   "name": "cyber-arena-render",
-  "version": "1.1.0",
-  "description": "Cyberpunk PvP Real-Time Cloud Game",
+  "version": "1.2.0",
+  "description": "Cyberpunk PvP Real-Time Cloud Game Fix",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
