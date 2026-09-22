@@ -45,10 +45,15 @@ function getRandomSafePosition(radius = 20) {
     return { x: 2000, y: 1200 };
 }
 
-// Первоначальный спавн крипов-дронов
-for(let i = 0; i < 15; i++) {
+// Спавн сбалансированных крипов
+for(let i = 0; i < 18; i++) {
     let pos = getRandomSafePosition(14);
-    creeps.push({ id: 'c_' + Math.random().toString(36).substr(2, 5), x: pos.x, y: pos.y, radius: 14, hp: 30, maxHp: 30, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3 });
+    creeps.push({ 
+        id: 'c_' + Math.random().toString(36).substr(2, 5), 
+        x: pos.x, y: pos.y, radius: 14, hp: 35, maxHp: 30, lastShot: 0,
+        vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
+        state: 'patrol', targetId: null
+    });
 }
 
 io.on('connection', (socket) => {
@@ -74,27 +79,76 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('shoot', (bulletData) => {
-        bullets.push({ ...bulletData, id: Math.random().toString(36).substr(2, 9) });
-    });
-
+    socket.on('shoot', (bData) => { bullets.push({ ...bData, id: Math.random().toString(36).substr(2, 9) }); });
+    socket.on('removeItem', (itemId) => { items = items.filter(i => i.id !== itemId); io.emit('itemRemoved', itemId); });
     socket.on('disconnect', () => { delete players[socket.id]; io.emit('playerLeft', socket.id); });
 });
 
 setInterval(() => {
-    // Движение и ИИ крипов
+    let activePlayers = Object.values(players);
+
+    // Расчет ИИ Крипов с учетом зон видимости и потери цели
     creeps.forEach(c => {
-        c.x += c.vx; c.y += c.vy;
+        let closestPlayer = null, minDist = Infinity;
+        
+        activePlayers.forEach(p => {
+            let d = Math.hypot(p.x - c.x, p.y - c.y);
+            if (d < minDist) { minDist = d; closestPlayer = p; }
+        });
+
+        // Матрица состояний ИИ дрона
+        if (c.state === 'patrol') {
+            // Обычное блуждание
+            c.x += c.vx; c.y += c.vy;
+            if (Math.random() < 0.02) { c.vx = (Math.random() - 0.5) * 3; c.vy = (Math.random() - 0.5) * 3; }
+
+            // Проверка входа в Agro-радиус (380px)
+            if (closestPlayer && minDist < 380) {
+                c.state = 'chase';
+                c.targetId = closestPlayer.id;
+            }
+        } else if (c.state === 'chase') {
+            // Проверяем, существует ли цель до сих пор
+            let currentTarget = players[c.targetId];
+            if (!currentTarget) { c.state = 'patrol'; return; }
+
+            let distToTarget = Math.hypot(currentTarget.x - c.x, currentTarget.y - c.y);
+
+            // Проверка разрыва дистанции и потери агро (480px)
+            if (distToTarget > 480) {
+                c.state = 'patrol';
+                c.targetId = null;
+                c.vx = (Math.random() - 0.5) * 2; c.vy = (Math.random() - 0.5) * 2;
+                return;
+            }
+
+            // Преследование цели
+            let dx = currentTarget.x - c.x, dy = currentTarget.y - c.y;
+            c.x += (dx / distToTarget) * 2.4; c.y += (dy / distToTarget) * 2.4;
+
+            // Ведение огня
+            let now = Date.now();
+            if (now - c.lastShot > 1400 && distToTarget < 350) {
+                bullets.push({ 
+                    x: c.x, y: c.y, vx: (dx / distToTarget) * 8.5, vy: (dy / distToTarget) * 8.5, 
+                    damage: 6, ownerColor: '#888888', color: '#ffffff', id: Math.random().toString(36).substr(2, 9) 
+                });
+                c.lastShot = now;
+            }
+        }
+
+        // Отталкивание от неоновых стен зданий
         if (c.x < c.radius || c.x > WORLD.width - c.radius) c.vx *= -1;
         if (c.y < c.radius || c.y > WORLD.height - c.radius) c.vy *= -1;
         buildings.forEach(b => {
             if (c.x + c.radius > b.x && c.x - c.radius < b.x + b.w && c.y + c.radius > b.y && c.y - c.radius < b.y + b.h) {
-                c.vx *= -1; c.vy *= -1; c.x += c.vx * 2; c.y += c.vy * 2;
+                c.vx *= -1; c.vy *= -1; c.x += c.vx * 2.5; c.y += c.vy * 2.5;
+                if(c.state === 'chase') { c.state = 'patrol'; c.targetId = null; } // Теряет след при столкновении со стеной
             }
         });
     });
 
-    // Обработка пуль
+    // Обработка снарядов лазеров
     bullets.forEach((b, index) => {
         let sandevistanActive = Object.values(players).some(p => p.color === '#ff0055' && p.skillActive);
         let speedMod = (sandevistanActive && b.ownerColor !== '#ff0055') ? 0.25 : 1;
@@ -102,29 +156,28 @@ setInterval(() => {
 
         let hitWall = buildings.some(w => b.x > w.x && b.x < w.x + w.w && b.y > w.y && b.y < w.y + w.h);
         if (hitWall || b.x < 0 || b.x > WORLD.width || b.y < 0 || b.y > WORLD.height) {
-            io.emit('bulletExplode', {x: b.x, y: b.y, color: '#2d2d66'});
             bullets.splice(index, 1); return;
         }
 
-        // Попадание крипов
         for (let i = 0; i < creeps.length; i++) {
             let c = creeps[i];
-            if (Math.hypot(b.x - c.x, b.y - c.y) < c.radius) {
-                io.emit('bulletExplode', {x: b.x, y: b.y, color: '#555555'});
+            if (b.ownerColor !== '#888888' && Math.hypot(b.x - c.x, b.y - c.y) < c.radius) {
                 c.hp -= b.damage;
+                c.state = 'chase'; // Контратака: если выстрелить в крипа, он сразу сагрится на вас
+                c.targetId = b.ownerId;
+                
                 if (c.hp <= 0) {
                     io.emit('creepKilled', { creepId: c.id, killerSocketId: b.ownerId, x: c.x, y: c.y });
                     creeps.splice(i, 1);
                     setTimeout(() => {
                         let pos = getRandomSafePosition(14);
-                        creeps.push({ id: 'c_' + Math.random().toString(36).substr(2, 5), x: pos.x, y: pos.y, radius: 14, hp: 30, maxHp: 30, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3 });
-                    }, 5000);
+                        creeps.push({ id: 'c_' + Math.random().toString(36).substr(2, 5), x: pos.x, y: pos.y, radius: 14, hp: 35, maxHp: 30, lastShot: 0, vx: (Math.random()-0.5)*2, vy: (Math.random()-0.5)*2, state: 'patrol', targetId: null });
+                    }, 6000);
                 }
                 bullets.splice(index, 1); return;
             }
         }
 
-        // Попадание в игроков
         for (let id in players) {
             let p = players[id];
             if (p.color !== b.ownerColor && Math.hypot(b.x - p.x, b.y - p.y) < p.radius) {
@@ -135,14 +188,12 @@ setInterval(() => {
         }
     });
 
-    // Редкий и точный спавн предметов на замену поднятым (без дублирования координат)
-    if (items.length < 20 && Math.random() < 0.01) {
+    if (items.length < 25 && Math.random() < 0.02) {
         let pos = getRandomSafePosition(13);
         const types = [{t:'heal', c:'#00ff55', l:'HP'}, {t:'damage', c:'#ffaa00', l:'DMG'}, {t:'speed', c:'#d200ff', l:'SPD'}];
         let s = types[Math.floor(Math.random() * types.length)];
         items.push({ x: pos.x, y: pos.y, type: s.t, color: s.c, label: s.l, id: Math.random().toString(36).substr(2, 5) });
     }
-    
     io.emit('stateUpdate', { players, bullets, items, creeps });
 }, 1000 / 60);
 
