@@ -11,9 +11,6 @@ const io = require('socket.io')(http, {
 });
 const path = require('path');
 
-});
-const path = require('path');
-
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -27,7 +24,7 @@ let anomalies = [];
 const anomalyTypes = [{type:'toxic'}, {type:'sludge'}, {type:'heal'}];
 for (let i = 0; i < 15; i++) {
     anomalies.push({
-        x: Math.random() * (WORLD.width - 500) + 250, y: Math.random() * (WORLD.height - 500) + 250, radius: Math.random() * 160 + 110,
+        x: Math.random() * (WORLD.width - 500) + 250, y: Math.random() * (WORLD.height - 500) + 250, radius: Math.random() * 180 + 120,
         type: anomalyTypes[Math.floor(Math.random() * anomalyTypes.length)].type
     });
 }
