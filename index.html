@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyber Arena Online: RPG Edition</title>
+    <title>Cyber Arena Online: RPG Tactical Client</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -34,7 +34,7 @@
     <div id="ui">
         <div class="player-info local-color">
             <strong>[ВЫ] Agent_<span id="local-id">...</span></strong>
-            <div class="stats-display">LVL: <span id="local-lvl">1</span> | DMG: <span id="local-dmg">12</span> (+0) | SPD: <span id="local-spd">5.5</span></div>
+            <div class="stats-display">LVL: <span id="local-lvl">1</span> | DMG: <span id="local-dmg">12</span> | SPD: <span id="local-spd">5.5</span></div>
             <div style="margin-top: 4px;">SYNC: <span id="local-hp-text">100</span>% | SYS: <span id="local-skill">READY</span></div>
             <div class="bar"><div id="local-hp" class="fill hp-fill"></div></div>
             <div class="bar"><div id="local-cd" class="fill cd-fill"></div></div>
@@ -49,7 +49,7 @@
         </div>
     </div>
     <div id="game-container"><canvas id="gameCanvas" width="1200" height="700"></canvas></div>
-    <div id="legend"><span>Уничтожайте <span style="color:#888888; text-shadow:0 0 3px #fff;">СЕРЫХ ДРОНОВ</span> ради мгновенного СУПЕР-ПРИРОСТА матрицы!</span><span>Render RPG Engine v2.0</span></div>
+    <div id="legend"><span>Управление отзывчивое (0ms лаг). Радиус обнаружения дронов — 380px.</span><span>Render Predict Engine v4.0</span></div>
 
     <script>
         const socket = io(window.location.origin, { transports: ['websocket'], upgrade: false }); 
@@ -75,28 +75,28 @@
         });
         
         socket.on('stateUpdate', data => { 
-            bullets = data.bullets; items = data.items; creeps = data.creeps || [];
+            let serverBullets = data.bullets.filter(b => b.ownerId !== localId);
+            let myLocalBullets = bullets.filter(b => b.ownerId === localId);
+            bullets = [...myLocalBullets, ...serverBullets];
+            
+            items = data.items; creeps = data.creeps || [];
             for (let id in data.players) { 
-                if (id !== localId) { 
-                    players[id] = data.players[id]; 
-                    document.getElementById('enemy-id').innerText = id.substring(0, 4); 
-                    document.getElementById('connection-status').style.display = "none"; 
-                } 
+                if (id !== localId) { players[id] = data.players[id]; document.getElementById('enemy-id').innerText = id.substring(0, 4); document.getElementById('connection-status').style.display = "none"; } 
             } 
         });
         
+        socket.on('itemRemoved', itemId => { items = items.filter(i => i.id !== itemId); });
         socket.on('damageTaken', dmg => { if (localPlayer.color === '#00ffcc' && localPlayer.skillActive) return; localPlayer.hp = Math.max(0, localPlayer.hp - dmg); });
         socket.on('bulletExplode', data => { for (let i = 0; i < 12; i++) particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, radius: Math.random()*3+1, color: data.color, alpha: 1, decay: Math.random()*0.03+0.02 }); });
         
-        // Получение супер-прокачки за убийство крипа
         socket.on('creepKilled', data => {
             for (let i = 0; i < 15; i++) particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*8, radius: Math.random()*4+1, color: '#ffff00', alpha: 1, decay: 0.02 });
             if (data.killerSocketId === localId) {
                 localPlayer.lvl += 1;
                 let roll = Math.random();
-                if (roll < 0.33) { localPlayer.damage += 6; } 
-                else if (roll < 0.66) { localPlayer.speed = Math.min(9.5, localPlayer.speed + 0.9); } 
-                else { localPlayer.hp = Math.min(100, localPlayer.hp + 40); }
+                if (roll < 0.33) { localPlayer.damage += 4; } 
+                else if (roll < 0.66) { localPlayer.speed = Math.min(9.5, localPlayer.speed + 0.5); } 
+                else { localPlayer.hp = Math.min(100, localPlayer.hp + 30); }
             }
         });
         socket.on('playerLeft', id => { delete players[id]; document.getElementById('connection-status').innerText = "ВРАГ ВЫШЕЛ"; document.getElementById('connection-status').style.display = "block"; });
@@ -125,32 +125,38 @@
             if (keys[controls.skill] && localPlayer.skillCD <= 0 && !localPlayer.skillActive) { localPlayer.skillActive = true; localPlayer.skillTimer = localPlayer.color === '#ff0055' ? 3500 : 4500; localPlayer.skillCD = localPlayer.color === '#ff0055' ? 10000 : 12000; }
             if (localPlayer.skillCD > 0) localPlayer.skillCD -= 16.66; if (localPlayer.skillActive) { localPlayer.skillTimer -= 16.66; if (localPlayer.skillTimer <= 0) localPlayer.skillActive = false; }
 
+            // Локальный спавн пуль для мгновенной стрельбы (0ms лаг)
             const now = Date.now();
             if (keys['MouseLeft'] && now - localPlayer.lastShot > localPlayer.shotDelay) { 
-                socket.emit('shoot', { x: localPlayer.x + localPlayer.aimX * localPlayer.radius, y: localPlayer.y + localPlayer.aimY * localPlayer.radius, vx: localPlayer.aimX * 13, vy: localPlayer.aimY * 13, damage: localPlayer.damage, ownerId: localId, ownerColor: localPlayer.color, color: localPlayer.bulletColor }); 
+                let bX = localPlayer.x + localPlayer.aimX * localPlayer.radius;
+                let bY = localPlayer.y + localPlayer.aimY * localPlayer.radius;
+                let localBullet = { x: bX, y: bY, vx: localPlayer.aimX * 13, vy: localPlayer.aimY * 13, damage: localPlayer.damage, ownerId: localId, ownerColor: localPlayer.color, color: localPlayer.bulletColor };
+                
+                bullets.push(localBullet);
+                socket.emit('shoot', localBullet);
                 localPlayer.lastShot = now; 
             }
 
-            // Стабильный подбор чипов (удаление происходит на сервере, клиент считывает изменения)
+            // Моментальное исчезновение чипов при подборе
             items.forEach((item) => { 
                 if (Math.hypot(localPlayer.x - item.x, localPlayer.y - item.y) < localPlayer.radius + 13) { 
                     if (item.type === 'heal') localPlayer.hp = Math.min(100, localPlayer.hp + 25); 
-                    if (item.type === 'damage') { localPlayer.damage += 3; } 
-                    if (item.type === 'speed') { localPlayer.speed = Math.min(9.5, localPlayer.speed + 0.4); } 
+                    if (item.type === 'damage') localPlayer.damage += 3; 
+                    if (item.type === 'speed') localPlayer.speed = Math.min(9.5, localPlayer.speed + 0.4); 
                     localPlayer.lvl += 1;
-                    socket.emit('shoot', { x: -999, y: -999, vx: 0, vy: 0, damage: 0, ownerColor: 'clean', color: 'clean' }); // пинг серверу
+                    
+                    socket.emit('removeItem', item.id);
+                    items = items.filter(i => i.id !== item.id);
                 } 
             });
             
             if (localPlayer.hp <= 0) { localPlayer.hp = 100; localPlayer.speed = localPlayer.baseSpeed; localPlayer.damage = 12; localPlayer.lvl = 1; localPlayer.x = Math.random()*3000 + 500; localPlayer.y = Math.random()*2000 + 200; }
             socket.emit('playerUpdate', { x: localPlayer.x, y: localPlayer.y, aimX: localPlayer.aimX, aimY: localPlayer.aimY, skillActive: localPlayer.skillActive, skillCD: localPlayer.skillCD, hp: localPlayer.hp, speed: localPlayer.speed, damage: localPlayer.damage, lvl: localPlayer.lvl });
         }
-
         function updateUI() {
             if (!localId) return;
             document.getElementById('local-hp').style.width = localPlayer.hp + '%'; document.getElementById('local-hp-text').innerText = Math.round(localPlayer.hp);
             document.getElementById('local-lvl').innerText = localPlayer.lvl;
-            document.getElementById('local-dmg').innerText = localPlayer.damage;
             document.getElementById('local-dmg').innerHTML = `${localPlayer.damage} <span style="color:#ffaa00">(+${localPlayer.damage - 12})</span>`;
             document.getElementById('local-spd').innerText = localPlayer.speed.toFixed(1);
             
@@ -179,15 +185,22 @@
             ctx.fillStyle = '#050510'; ctx.strokeStyle = '#2d2d66'; ctx.lineWidth = 3; buildings.forEach(b => { ctx.fillRect(b.x, b.y, b.w, b.h); ctx.strokeRect(b.x, b.y, b.w, b.h); });
             items.forEach(i => { ctx.beginPath(); ctx.arc(i.x, i.y, 13, 0, Math.PI*2); ctx.fillStyle = i.color; ctx.fill(); ctx.fillStyle = '#000'; ctx.font = 'bold 9px Arial'; ctx.fillText(i.label, i.x-6, i.y+3); });
             
-            // РЕНДЕРИНГ КРИПОВ-ДРОНОВ
+            // Отрисовка патрульных дронов
             creeps.forEach(c => {
-                ctx.save(); ctx.shadowBlur = 8; ctx.shadowColor = '#666'; ctx.fillStyle = '#3a3a44'; ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.fill();
-                ctx.strokeStyle = '#888'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
-                // Полоска здоровья крипа
-                ctx.fillStyle = '#ff3333'; ctx.fillRect(c.x - 14, c.y - 22, 28 * (c.hp / c.maxHp), 3);
+                ctx.save(); ctx.shadowBlur = 8; ctx.shadowColor = c.state === 'chase' ? '#ff3333' : '#666666';
+                ctx.fillStyle = c.state === 'chase' ? '#5a1a1a' : '#3a3a44'; 
+                ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = c.state === 'chase' ? '#ff3333' : '#888888'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+                ctx.fillStyle = '#ff3333'; ctx.fillRect(c.x - 14, c.y - 21, 28 * (c.hp / 35), 3);
             });
 
-            bullets.forEach(b => { ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = b.color; ctx.lineWidth = 4; ctx.strokeStyle = b.color; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx * 1.5, b.y - b.vy * 1.5); ctx.stroke(); ctx.restore(); });
+            // Расчет лазеров
+            bullets.forEach((b, i) => {
+                b.x += b.vx; b.y += b.vy;
+                ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = b.color; ctx.lineWidth = 4; ctx.strokeStyle = b.color; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx * 0.4, b.y - b.vy * 0.4); ctx.stroke(); ctx.restore();
+                if (b.x < 0 || b.x > WORLD.width || b.y < 0 || b.y > WORLD.height) bullets.splice(i, 1);
+            });
+
             particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.alpha -= p.decay; ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill(); ctx.restore(); if(p.alpha<=0) particles.splice(i,1); });
 
             ctx.save(); ctx.shadowBlur = localPlayer.skillActive ? 30 : 15; ctx.shadowColor = localPlayer.color; ctx.beginPath(); ctx.arc(localPlayer.x, localPlayer.y, localPlayer.radius, 0, Math.PI*2); ctx.fillStyle = localPlayer.color; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
