@@ -27,7 +27,8 @@
         canvas { background: #04040c; display: block; }
         #legend { display: flex; justify-content: space-between; width: 1200px; margin-top: 10px; font-size: 11px; background: rgba(6, 6, 14, 0.8); padding: 8px 20px; border: 1px solid #333366; border-radius: 4px; color: #888; }
     </style>
-    <script src="https://socket.io"></script>
+    <!-- ФИКС: Подключаем плагин со своего же сервера, чтобы обойти CORS-блокировки -->
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <div id="ui">
@@ -46,16 +47,11 @@
         </div>
     </div>
     <div id="game-container"><canvas id="gameCanvas" width="1200" height="700"></canvas></div>
-    <div id="legend"><span>WASD — Бег | Курсор — Прицел | ЛКМ — Огонь | Shift — Скилл</span><span>Cloud Gaming v6.5</span></div>
+    <div id="legend"><span>WASD — Бег | Курсор — Прицел | ЛКМ — Огонь | Shift — Скилл</span><span>Cloud Gaming v7.0</span></div>
 
     <script>
-        const socket = io('https://onrender.com', {
-            transports: ['websocket'],
-            secure: true,
-            reconnection: true,
-            reconnectionAttempts: 10,
-            reconnectionDelay: 1000
-        });
+        // Двухрежимное автоопределение: работает и по локальному, и по защищенному протоколу wss://
+        const socket = io(window.location.origin); 
 
         const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
         let WORLD = { width: 4000, height: 2400 }; let localId = null;
