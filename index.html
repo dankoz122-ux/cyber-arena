@@ -5,560 +5,280 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cyber Arena Online: Cyber-Shop Edition</title>
     <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
-        }
+        * { box-sizing: border-box; }
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #05050d;
-            font-family: 'Courier New', Courier, monospace;
-            color: #00ffcc;
-            overflow: hidden;
+            margin: 0; padding: 0; background-color: #030308; color: #fff;
+            font-family: 'Courier New', Courier, monospace; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
         }
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 10;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+        #ui {
+            display: flex; justify-content: space-between; width: 1450px; margin-bottom: 12px;
+            background: rgba(6, 6, 14, 0.9); padding: 15px; border: 2px solid #00ffcc;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.4); border-radius: 4px; backdrop-filter: blur(5px);
         }
-        .hud-panel {
-            background: rgba(5, 5, 20, 0.75);
-            border: 2px solid #00ffcc;
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
-            padding: 15px;
-            pointer-events: auto;
-            backdrop-filter: blur(4px);
-        }
-        #stats-panel {
-            width: 320px;
-        }
-        .stat-line {
-            margin: 5px 0;
-            font-size: 14px;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-        .bar-container {
-            width: 100%;
-            background: #220011;
-            border: 1px solid #ff0055;
-            height: 12px;
-            margin-top: 3px;
-        }
-        #hp-bar {
-            width: 100%;
-            height: 100%;
-            background: #ff0055;
-            box-shadow: 0 0 8px #ff0055;
-            transition: width 0.1s ease;
-        }
+        .player-info { width: 38%; font-size: 13px; }
+        .local-color { color: #ff0055; text-shadow: 0 0 8px #ff0055; }
+        .enemy-color { color: #00ffcc; text-shadow: 0 0 8px #00ffcc; }
+        .stats-display { font-size: 11px; margin-top: 4px; opacity: 0.9; letter-spacing: 0.5px; }
+        .bar { background: #111122; height: 12px; border: 1px solid #333355; margin-top: 4px; border-radius: 2px; overflow: hidden; }
+        .fill { height: 100%; width: 100%; }
+        .hp-fill { background: linear-gradient(90deg, #ff0055, #ff5588); box-shadow: 0 0 10px #ff0055; }
+        .cd-fill { background: linear-gradient(90deg, #d200ff, #ff00ee); box-shadow: 0 0 10px #ff00ee; width: 0%; }
+        
+        #game-frame { display: flex; width: 1450px; gap: 15px; }
+        #game-container { position: relative; width: 1200px; height: 700px; border: 3px solid #ff0055; box-shadow: 0 0 25px rgba(255, 0, 85, 0.3); border-radius: 4px; overflow: hidden; }
+        canvas { background: #04040c; display: block; }
+        /* СТИЛИ БОКОВОГО КИБЕР-МАГАЗИНА */
         #shop-panel {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 380px;
-            border: 2px solid #ff0055;
-            box-shadow: 0 0 15px rgba(255, 0, 85, 0.3);
+            width: 235px; height: 700px; background: rgba(8, 8, 24, 0.95);
+            border: 2px solid #00ffcc; box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+            border-radius: 4px; padding: 15px; display: flex; flex-direction: column; gap: 12px;
         }
-        .shop-title {
-            color: #ff0055;
-            text-align: center;
-            font-size: 18px;
-            margin-bottom: 10px;
-            letter-spacing: 2px;
-            border-bottom: 1px dashed #ff0055;
-            padding-bottom: 5px;
-        }
+        .shop-header { color: #00ffcc; font-weight: bold; text-align: center; border-bottom: 1px solid #333366; padding-bottom: 8px; font-size: 14px; text-shadow: 0 0 5px #00ffcc; }
         .shop-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            margin: 6px 0;
-            background: rgba(255, 0, 85, 0.05);
-            border: 1px solid rgba(255, 0, 85, 0.3);
-            cursor: pointer;
-            transition: all 0.2s ease;
+            background: #050515; border: 1px solid #333366; border-radius: 4px;
+            padding: 10px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; transition: 0.2s;
         }
-        .shop-item:hover {
-            background: rgba(255, 0, 85, 0.2);
-            border-color: #ff0055;
-        }
-        .shop-item.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            border-color: #444;
-            background: transparent;
-        }
-        .shop-item-info {
-            display: flex;
-            flex-direction: column;
-            width: 70%;
-        }
-        .shop-item-name {
-            font-size: 13px;
-            font-weight: bold;
-            color: #fff;
-        }
-        .shop-item-desc {
-            font-size: 10px;
-            color: #aaa;
-            margin-top: 2px;
-        }
-        .shop-item-cost {
-            font-size: 14px;
-            color: #ffaa00;
-            font-weight: bold;
-        }
-        #dash-cooldown {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #ffaa00;
-        }
-        #game-canvas {
-            display: block;
-            background: #020206;
-        }
-        #connect-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(2, 2, 6, 0.9);
-            z-index: 100;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            letter-spacing: 3px;
-            color: #00ffcc;
-            text-shadow: 0 0 10px #00ffcc;
-        }
-        .blink {
-            animation: blinker 1.5s linear infinite;
-        }
-        @keyframes blinker {
-            50% { opacity: 0; }
-        }
+        .shop-item:hover { border-color: #ff0055; box-shadow: 0 0 10px rgba(255, 0, 85, 0.2); background: #080820; }
+        .item-title { font-weight: bold; font-size: 11px; display: flex; justify-content: space-between; }
+        .item-desc { font-size: 10px; color: #888; line-height: 1.2; }
+        .item-cost { color: #ffaa00; font-size: 10px; font-weight: bold; text-align: right; }
+        
+        #legend { display: flex; justify-content: space-between; width: 1450px; margin-top: 10px; font-size: 11px; background: rgba(6, 6, 14, 0.8); padding: 8px 20px; border: 1px solid #333366; border-radius: 4px; color: #888; }
     </style>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-
-    <div id="connect-overlay" class="blink">ПОДКЛЮЧЕНИЕ К CYBER_NET...</div>
-
-    <div id="ui-layer">
-        <div id="stats-panel" class="hud-panel">
-            <div class="stat-line" id="player-lvl">LVL: 1</div>
-            <div class="stat-line" id="player-cr">CR: 0</div>
-            <div class="stat-line">
-                HP: <span id="hp-text">100/100</span>
-                <div class="bar-container"><div id="hp-bar"></div></div>
-            </div>
-            <div class="stat-line" id="player-dmg">DMG: 12</div>
-            <div class="stat-line" id="player-spd">SPD: 5.5</div>
-            <div id="dash-cooldown">РЫВОК [SPACE]: ГОТОВ</div>
+    <div id="ui">
+        <div class="player-info local-color">
+            <strong>[ВЫ] Agent_<span id="local-id">...</span></strong>
+            <div class="stats-display">LVL: <span id="local-lvl">1</span> | CR: <span id="local-cr" style="color:#ffaa00">0</span> | DMG: <span id="local-dmg">12</span> | SPD: <span id="local-spd">5.5</span></div>
+            <div style="margin-top: 4px;">SYNC: <span id="local-hp-text">100</span>% | SYS: <span id="local-skill">READY</span></div>
+            <div class="bar"><div id="local-hp" class="fill hp-fill"></div></div>
+            <div class="bar"><div id="local-cd" class="fill cd-fill"></div></div>
         </div>
-
-        <div id="shop-panel" class="hud-panel">
-            <div class="shop-title">[CYBER_NET_SHOP]</div>
-            <div class="shop-item" onclick="buyUpgrade('fast_fire', 60)">
-                <div class="shop-item-info">
-                    <div class="shop-item-name">1. FAST_FIRE</div>
-                    <div class="shop-item-desc">Скорость стрельбы лазерами увеличивается на 20%</div>
-                </div>
-                <div class="shop-item-cost">60 CR</div>
-            </div>
-            <div class="shop-item" onclick="buyUpgrade('shotgun', 150)">
-                <div class="shop-item-info">
-                    <div class="shop-item-name">2. SHOTGUN</div>
-                    <div class="shop-item-desc">Стрельба веером из 3 лазерных снарядов за выстрел</div>
-                </div>
-                <div class="shop-item-cost">150 CR</div>
-            </div>
-            <div class="shop-item" onclick="buyUpgrade('boom_shot', 200)">
-                <div class="shop-item-info">
-                    <div class="shop-item-name">3. BOOM_SHOT</div>
-                    <div class="shop-item-desc">Снаряды детонируют, нанося АОЕ урон по площади</div>
-                </div>
-                <div class="shop-item-cost">200 CR</div>
-            </div>
-            <div class="shop-item" onclick="buyUpgrade('bio_leech', 120)">
-                <div class="shop-item-info">
-                    <div class="shop-item-name">4. BIO_LEECH</div>
-                    <div class="shop-item-desc">Кибер-вампиризм: возвращает 15% ХП от урона</div>
-                </div>
-                <div class="shop-item-cost">120 CR</div>
-            </div>
-            <div class="shop-item" onclick="buyUpgrade('blink_dash', 100)">
-                <div class="shop-item-info">
-                    <div class="shop-item-name">5. BLINK_DASH</div>
-                    <div class="shop-item-desc">Улучшает параметры стабильности локального сдвига</div>
-                </div>
-                <div class="shop-item-cost">100 CR</div>
-            </div>
+        <div id="connection-status" style="align-self: center; color: #ffaa00; text-shadow: 0 0 5px #ffaa00; font-size: 12px;">ПОДКЛЮЧЕНИЕ...</div>
+        <div class="player-info enemy-color" style="text-align: right;">
+            <strong>[ВРАГ] Agent_<span id="enemy-id">...</span></strong>
+            <div class="stats-display">LVL: <span id="enemy-lvl">1</span> | CR: <span id="enemy-cr" style="color:#ffaa00">0</span> | DMG: <span id="enemy-dmg">12</span> | SPD: <span id="enemy-spd">5.5</span></div>
+            <div style="margin-top: 4px;">SYNC: <span id="enemy-hp-text">100</span>% | SYS: <span id="enemy-skill">READY</span></div>
+            <div class="bar"><div id="enemy-hp" class="fill hp-fill"></div></div>
+            <div class="bar"><div id="enemy-cd" class="fill cd-fill"></div></div>
+        </div>
+    </div>
+    <div id="game-frame">
+        <div id="game-container"><canvas id="gameCanvas" width="1200" height="700"></canvas></div>
+        
+        <!-- ВИТРИНА КИБЕР-МАГАЗИНА -->
+        <div id="shop-panel">
+            <div class="shop-header">[CYBER_NET_SHOP]</div>
+            <div class="shop-item" onclick="buyUpgrade('f-rate')"><div class="item-title"><span style="color:#00ffcc">1. FAST_FIRE</span><span class="item-cost" id="cost-f-rate">60 CR</span></div><div class="item-desc">Скорость стрельбы лазерами увеличивается на 20%</div></div>
+            <div class="shop-item" onclick="buyUpgrade('shotgun')"><div class="item-title"><span style="color:#d200ff">2. SHOTGUN</span><span class="item-cost">150 CR</span></div><div class="item-desc">Стрельба веером из 3 лазерных снарядов за выстрел</div></div>
+            <div class="shop-item" onclick="buyUpgrade('boom')"><div class="item-title"><span style="color:#ffaa00">3. BOOM_SHOT</span><span class="item-cost">200 CR</span></div><div class="item-desc">Снаряды детонируют, нанося АОЕ урон по площади</div></div>
+            <div class="shop-item" onclick="buyUpgrade('leech')"><div class="item-title"><span style="color:#ff0055">4. BIO_LEECH</span><span class="item-cost">120 CR</span></div><div class="item-desc">Кибер-вампиризм: возвращает 15% ХП от вашего урона</div></div>
+            <div class="shop-item" onclick="buyUpgrade('dash')"><div class="item-title"><span style="color:#ffffff">5. BLINK_DASH</span><span class="item-cost">100 CR</span></div><div class="item-desc">Жми SPACE (Пробел) для телепортации вперед на 120px</div></div>
         </div>
     </div>
 
-    <canvas id="game-canvas"></canvas>
+    <div id="legend"><span>Убивайте серых дронов (+15 CR) и собирайте чипы (+5 CR) для фарма кредитов!</span><span>Cloud Shop Engine v5.0</span></div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io({ transports: ['websocket', 'polling'] });
-        const canvas = document.getElementById('game-canvas');
-        const ctx = canvas.getContext('2d');
-        const overlay = document.getElementById('connect-overlay');
-
-        // Игровое состояние
-        let myId = null;
-        let world = { width: 4000, height: 2400 };
-        let players = {};
-        let bullets = [];
-        let items = [];
-        let creeps = [];
-        let buildings = [];
-        let anomalies = [];
+        const socket = io(window.location.origin, { transports: ['websocket'], upgrade: false }); 
+        const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
+        let WORLD = { width: 4000, height: 2400 }; let localId = null;
+        let anomalies = [], buildings = [], players = {}, bullets = [], items = [], creeps = [], particles = []; const keys = {};
+        let mouseWorldX = 0, mouseWorldY = 0, currentCamX = 0, currentCamY = 0;
+        const controls = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', skill: 'ShiftLeft' };
         
-        // Локальные параметры прокачки игрока
-        let upgrades = {
-            fastFire: false,
-            shotgun: false,
-            boomShot: false,
-            bioLeech: false,
-            blinkDash: false
-        };
-        let lastShotTime = 0;
-        let fireRateInterval = 400; // Базовая задержка между выстрелами (мс)
+        let shopUpgrades = { fireRateLvl: 0, hasShotgun: false, isExplosive: false, hasLeech: false, hasDash: false };
 
-        // Управление вводом
-        let keys = {};
-        let mouse = { x: 0, y: 0, worldX: 0, worldY: 0, down: false };
-
-        // Инициализация размеров экрана
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        // Слушатели клавиатуры и мыши
-        window.addEventListener('keydown', (e) => {
+        let localPlayer = { x: 2000, y: 1200, radius: 20, speed: 5.5, baseSpeed: 5.5, damage: 12, hp: 100, lvl: 1, credits: 0, skillCD: 0, skillActive: false, skillTimer: 0, dirX: 0, dirY: 0, aimX: 1, aimY: 0, lastShot: 0, shotDelay: 220 };
+        window.addEventListener('mousemove', e => { const r = canvas.getBoundingClientRect(); mouseWorldX = e.clientX - r.left + currentCamX; mouseWorldY = e.clientY - r.top + currentCamY; });
+        window.addEventListener('mousedown', e => { if (e.button === 0) keys['MouseLeft'] = true; });
+        window.addEventListener('mouseup', e => { if (e.button === 0) keys['MouseLeft'] = false; });
+        
+        window.addEventListener('keydown', e => { 
             keys[e.code] = true;
-            if (e.code === 'Space') {
-                e.preventDefault();
-                triggerDash();
+            // Логика квантового рывка на Пробел (SPACE)
+            if (e.code === 'Space' && shopUpgrades.hasDash) {
+                let mx = 0, my = 0; if (keys['KeyW']) my = -1; if (keys['KeyS']) my = 1; if (keys['KeyA']) mx = -1; if (keys['KeyD']) mx = 1;
+                if(mx === 0 && my === 0) { mx = localPlayer.aimX; my = localPlayer.aimY; }
+                const len = Math.sqrt(mx*mx + my*my);
+                let dashX = localPlayer.x + (mx/len) * 120; let dashY = localPlayer.y + (my/len) * 120;
+                if (!buildings.some(b => isCollidingWithBuilding(dashX, dashY, localPlayer.radius, b))) {
+                    localPlayer.x = Math.max(20, Math.min(WORLD.width-20, dashX));
+                    localPlayer.y = Math.max(20, Math.min(WORLD.height-20, dashY));
+                    for(let i=0; i<8; i++) particles.push({ x: localPlayer.x, y: localPlayer.y, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4, radius: Math.random()*2+1, color: '#ffffff', alpha: 1, decay: 0.05 });
+                }
             }
         });
-        window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        socket.on('init', data => {
+            localId = data.id; WORLD = data.world; anomalies = data.anomalies; buildings = data.buildings; players = data.players; creeps = data.creeps || [];
+            Object.assign(localPlayer, { x: players[localId].x, y: players[localId].y, color: players[localId].color, bulletColor: players[localId].bulletColor });
+            document.getElementById('local-id').innerText = localId.substring(0, 4);
+            document.getElementById('connection-status').innerText = "ОНЛАЙН СИНХРОНИЗАЦИЯ"; document.getElementById('connection-status').style.color = "#00ffcc";
+        });
+        socket.on('stateUpdate', data => { 
+            let serverBullets = data.bullets.filter(b => b.ownerId !== localId);
+            let myLocalBullets = bullets.filter(b => b.ownerId === localId);
+            bullets = [...myLocalBullets, ...serverBullets];
+            items = data.items; creeps = data.creeps || [];
+            for (let id in data.players) { 
+                if (id !== localId) { players[id] = data.players[id]; document.getElementById('enemy-id').innerText = id.substring(0, 4); document.getElementById('connection-status').style.display = "none"; } 
+            } 
+        });
         
-        window.addEventListener('mousemove', (e) => {
-            mouse.x = e.clientX;
-            mouse.y = e.clientY;
-        });
-        window.addEventListener('mousedown', (e) => { if(e.button === 0) mouse.down = true; });
-        window.addEventListener('mouseup', (e) => { if(e.button === 0) mouse.down = false; });
-
-        // Обработка подключения
-        socket.on('init', (data) => {
-            myId = data.id;
-            world = data.world;
-            anomalies = data.anomalies;
-            buildings = data.buildings;
-            players = data.players;
-            creeps = data.creeps;
-            overlay.style.display = 'none';
-        });
-
-        socket.on('stateUpdate', (data) => {
-            players = data.players;
-            bullets = data.bullets;
-            items = data.items;
-            creeps = data.creeps;
-            
-            // Синхронизируем локальный интерфейс из доверенных данных сервера
-            const me = players[myId];
-            if (me) {
-                document.getElementById('player-lvl').innerText = `LVL: ${me.lvl}`;
-                document.getElementById('player-cr').innerText = `CR: ${me.credits} CR`;
-                document.getElementById('player-dmg').innerText = `DMG: ${me.damage}`;
-                document.getElementById('player-spd').innerText = `SPD: ${me.speed.toFixed(1)}`;
-                document.getElementById('hp-text').innerText = `${Math.round(me.hp)}/${me.maxHp}`;
-                document.getElementById('hp-bar').style.width = `${(me.hp / me.maxHp) * 100}%`;
-                
-                const cdLabel = document.getElementById('dash-cooldown');
-                if (me.skillCD > 0) {
-                    cdLabel.innerText = `РЫВОК [SPACE]: ПЕРЕЗАРЯДКА (${(me.skillCD / 1000).toFixed(1)}s)`;
-                    cdLabel.style.color = '#ff0055';
-                } else {
-                    cdLabel.innerText = `РЫВОК [SPACE]: ГОТОВ`;
-                    cdLabel.style.color = '#00ffcc';
-                }
+        socket.on('itemRemoved', itemId => { items = items.filter(i => i.id !== itemId); });
+        socket.on('damageTaken', dmg => { if (localPlayer.color === '#00ffcc' && localPlayer.skillActive) return; localPlayer.hp = Math.max(0, localPlayer.hp - dmg); });
+        socket.on('bulletExplode', data => { for (let i = 0; i < 10; i++) particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, radius: Math.random()*2+1, color: data.color, alpha: 1, decay: 0.03 }); });
+        
+        socket.on('aoeExplosion', data => {
+            for (let i = 0; i < 20; i++) particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*8, radius: Math.random()*4+1, color: '#ffaa00', alpha: 1, decay: 0.03 });
+            if (data.ownerId !== localId && Math.hypot(localPlayer.x - data.x, localPlayer.y - data.y) < data.r) {
+                if (!(localPlayer.color === '#00ffcc' && localPlayer.skillActive)) localPlayer.hp = Math.max(0, localPlayer.hp - (data.damage * 0.6));
             }
         });
 
-        socket.on('itemRemoved', (itemId) => {
-            items = items.filter(i => i.id !== itemId);
-        });
-
-        // Покупка улучшений в магазине
-        function buyUpgrade(type, cost) {
-            const me = players[myId];
-            if (!me || me.credits < cost) return;
-
-            if (type === 'fast_fire' && !upgrades.fastFire) {
-                upgrades.fastFire = true;
-                fireRateInterval *= 0.8; // Увеличение скорости атаки на 20%
-                me.credits -= cost;
-            } else if (type === 'shotgun' && !upgrades.shotgun) {
-                upgrades.shotgun = true;
-                me.credits -= cost;
-            } else if (type === 'boom_shot' && !upgrades.boomShot) {
-                upgrades.boomShot = true;
-                me.credits -= cost;
-            } else if (type === 'bio_leech' && !upgrades.bioLeech) {
-                upgrades.bioLeech = true;
-                me.credits -= cost;
-            } else if (type === 'blink_dash' && !upgrades.blinkDash) {
-                upgrades.blinkDash = true;
-                me.credits -= cost;
+        socket.on('creepKilled', data => {
+            for (let i = 0; i < 15; i++) particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*8, radius: Math.random()*4+1, color: '#ffff00', alpha: 1, decay: 0.02 });
+            if (data.killerSocketId === localId) {
+                localPlayer.lvl += 1; localPlayer.credits += 15;
+                let roll = Math.random();
+                if (roll < 0.33) { localPlayer.damage += 2; } 
+                else if (roll < 0.66) { localPlayer.speed = Math.min(9.5, localPlayer.speed + 0.2); } 
+                else { localPlayer.hp = Math.min(100, localPlayer.hp + 15); }
             }
-            
-            // Отправляем обновленные кредиты на сервер (для синхронизации отображения)
-            socket.emit('playerUpdate', buildPayload(me));
+        });
+        socket.on('playerLeft', id => { delete players[id]; document.getElementById('connection-status').innerText = "ВРАГ ВЫШЕЛ"; document.getElementById('connection-status').style.display = "block"; });
+
+        function buyUpgrade(type) {
+            if (!localId) return;
+            if (type === 'f-rate' && localPlayer.credits >= 60) {
+                localPlayer.credits -= 60; shopUpgrades.fireRateLvl++;
+                localPlayer.shotDelay = Math.max(80, 220 - (shopUpgrades.fireRateLvl * 30));
+            } else if (type === 'shotgun' && localPlayer.credits >= 150 && !shopUpgrades.hasShotgun) {
+                localPlayer.credits -= 150; shopUpgrades.hasShotgun = true;
+            } else if (type === 'boom' && localPlayer.credits >= 200 && !shopUpgrades.isExplosive) {
+                localPlayer.credits -= 200; shopUpgrades.isExplosive = true;
+            } else if (type === 'leech' && localPlayer.credits >= 120 && !shopUpgrades.hasLeech) {
+                localPlayer.credits -= 120; shopUpgrades.hasLeech = true;
+            } else if (type === 'dash' && localPlayer.credits >= 100 && !shopUpgrades.hasDash) {
+                localPlayer.credits -= 100; shopUpgrades.hasDash = true;
+            }
         }
+        function isCollidingWithBuilding(px, py, radius, b) { let cX = Math.max(b.x, Math.min(px, b.x + b.w)), cY = Math.max(b.y, Math.min(py, b.y + b.h)); return (px - cX)**2 + (py - cY)**2 < radius**2; }
+        function updateLocalMovement() {
+            if (!localId) return; let currentSpeed = localPlayer.speed;
+            anomalies.forEach(a => { if (Math.hypot(localPlayer.x - a.x, localPlayer.y - a.y) < a.radius) { if (a.type === 'sludge') currentSpeed *= 0.45; if (a.type === 'toxic') localPlayer.hp = Math.max(0, localPlayer.hp - 0.05); if (a.type === 'heal' && localPlayer.hp < 100) localPlayer.hp = Math.min(100, localPlayer.hp + 0.04); } });
+            if (localPlayer.color === '#ff0055' && localPlayer.skillActive) currentSpeed *= 1.6;
 
-        // Запуск рывка вперед по направлению взгляда
-        function triggerDash() {
-            const me = players[myId];
-            if (!me || me.skillCD > 0) return;
-
-            // Вычисляем вектор взгляда
-            let dx = mouse.worldX - me.x;
-            let dy = mouse.worldY - me.y;
-            let dist = Math.hypot(dx, dy);
-            if (dist === 0) return;
-
-            let vx = dx / dist;
-            let vy = dy / dist;
-
-            // Изменяем координаты локально (сервер проверит коллизии стен и границ)
-            me.x += vx * 120;
-            me.y += vy * 120;
-            me.skillActive = true;
-
-            socket.emit('playerUpdate', buildPayload(me));
-        }
-
-        function buildPayload(me) {
-            return {
-                x: me.x, y: me.y, aimX: me.aimX, aimY: me.aimY,
-                skillActive: me.skillActive, skillCD: me.skillCD,
-                hp: me.hp, speed: me.speed, damage: me.damage, lvl: me.lvl, credits: me.credits
-            };
-        }
-
-        // Локальный тик инпута и стрельбы
-        setInterval(() => {
-            const me = players[myId];
-            if (!me) return;
-
-            // Рассчитываем вектор перемещения WASD
-            let mx = 0, my = 0;
-            if (keys['KeyW'] || keys['ArrowUp']) my -= 1;
-            if (keys['KeyS'] || keys['ArrowDown']) my += 1;
-            if (keys['KeyA'] || keys['ArrowLeft']) mx -= 1;
-            if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
-
+            let mx = 0, my = 0; if (keys[controls.up]) my = -1; if (keys[controls.down]) my = 1; if (keys[controls.left]) mx = -1; if (keys[controls.right]) mx = 1;
             if (mx !== 0 || my !== 0) {
-                let len = Math.hypot(mx, my);
-                me.x += (mx / len) * me.speed;
-                me.y += (my / len) * me.speed;
+                const len = Math.sqrt(mx*mx + my*my); localPlayer.dirX = mx / len; localPlayer.dirY = my / len;
+                let nextX = localPlayer.x + localPlayer.dirX * currentSpeed; if (!buildings.some(b => isCollidingWithBuilding(nextX, localPlayer.y, localPlayer.radius, b))) localPlayer.x = nextX;
+                let nextY = localPlayer.y + localPlayer.dirY * currentSpeed; if (!buildings.some(b => isCollidingWithBuilding(localPlayer.x, nextY, localPlayer.radius, b))) localPlayer.y = nextY;
             }
+            localPlayer.x = Math.max(localPlayer.radius, Math.min(WORLD.width - localPlayer.radius, localPlayer.x));
+            localPlayer.y = Math.max(localPlayer.radius, Math.min(WORLD.height - localPlayer.radius, localPlayer.y));
 
-            // Обработка направления стрельбы
-            let adx = mouse.worldX - me.x;
-            let ady = mouse.worldY - me.y;
-            let adist = Math.hypot(adx, ady);
-            if (adist > 0) {
-                me.aimX = adx / adist;
-                me.aimY = ady / adist;
-            }
+            let dx = mouseWorldX - localPlayer.x, dy = mouseWorldY - localPlayer.y, dM = Math.hypot(dx, dy); if (dM > 1) { localPlayer.aimX = dx / dM; localPlayer.aimY = dy / dM; }
 
-            // Стрельба по нажатию мыши с учетом задержки
-            let now = Date.now();
-            if (mouse.down && now - lastShotTime > fireRateInterval) {
-                fireWeapon(me);
-                lastShotTime = now;
-            }
+            if (keys[controls.skill] && localPlayer.skillCD <= 0 && !localPlayer.skillActive) { localPlayer.skillActive = true; localPlayer.skillTimer = localPlayer.color === '#ff0055' ? 3500 : 4500; localPlayer.skillCD = localPlayer.color === '#ff0055' ? 10000 : 12000; }
+            if (localPlayer.skillCD > 0) localPlayer.skillCD -= 16.66; if (localPlayer.skillActive) { localPlayer.skillTimer -= 16.66; if (localPlayer.skillTimer <= 0) localPlayer.skillActive = false; }
 
-            // Клиент сообщает серверу о своем положении
-            socket.emit('playerUpdate', buildPayload(me));
-        }, 1000 / 60);
-
-        function fireWeapon(me) {
-            let baseBullet = {
-                x: me.x, y: me.y,
-                vx: me.aimX * 10, vy: me.aimY * 10,
-                damage: me.damage,
-                ownerColor: me.color,
-                color: me.bulletColor,
-                ownerId: myId,
-                isExplosive: upgrades.boomShot,
-                hasLeech: upgrades.bioLeech
-            };
-
-            if (upgrades.shotgun) {
-                // Стрельба веером из 3 лазерных снарядов
-                let angles = [-0.2, 0, 0.2];
-                angles.forEach(angle => {
-                    let cos = Math.cos(angle);
-                    let sin = Math.sin(angle);
-                    let rx = baseBullet.vx * cos - baseBullet.vy * sin;
-                    let ry = baseBullet.vx * sin + baseBullet.vy * cos;
-                    socket.emit('shoot', { ...baseBullet, vx: rx, vy: ry });
-                });
-            } else {
-                socket.emit('shoot', baseBullet);
-            }
-        }
-
-        // Рендеринг игрового кадра
-        function draw() {
-            requestAnimationFrame(draw);
-            const me = players[myId];
-            if (!me) return;
-
-            // Центрирование камеры на локальном игроке
-            let camX = canvas.width / 2 - me.x;
-            let camY = canvas.height / 2 - me.y;
-
-            // Обновляем мировые координаты мыши
-            mouse.worldX = mouse.x - camX;
-            mouse.worldY = mouse.y - camY;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(camX, camY);
-
-            // Сетка фона карты
-            ctx.strokeStyle = '#111126';
-            ctx.lineWidth = 1;
-            const gridSize = 100;
-            for (let x = 0; x < world.width; x += gridSize) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, world.height); ctx.stroke();
-            }
-            for (let y = 0; y < world.height; y += gridSize) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(world.width, y); ctx.stroke();
-            }
-
-            // Границы мира
-            ctx.strokeStyle = '#ff0055';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(0, 0, world.width, world.height);
-
-            // Отрисовка аномалий
-            anomalies.forEach(a => {
-                let color = 'rgba(255, 0, 85, 0.15)';
-                if (a.type === 'heal') color = 'rgba(0, 255, 85, 0.15)';
-                if (a.type === 'sludge') color = 'rgba(150, 75, 0, 0.15)';
-                ctx.fillStyle = color;
-                ctx.beginPath();
-                ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = color.replace('0.15', '0.4');
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            });
-
-            // Отрисовка строений/стен
-            ctx.fillStyle = '#0f0f25';
-            ctx.strokeStyle = '#00ffcc';
-            ctx.lineWidth = 2;
-            buildings.forEach(b => {
-                ctx.fillRect(b.x, b.y, b.w, b.h);
-                ctx.strokeRect(b.x, b.y, b.w, b.h);
-            });
-
-            // Отрисовка разбросанных чипов
-            items.forEach(item => {
-                ctx.fillStyle = item.color;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = item.color;
-                ctx.fillRect(item.x - 8, item.y - 8, 16, 16);
-                ctx.shadowBlur = 0; // Сброс свечения
-
-                ctx.fillStyle = '#fff';
-                ctx.font = '9px monospace';
-                ctx.textAlign = 'center';
-                ctx.fillText(item.label, item.x, item.y + 3);
-            });
-
-            // Отрисовка крипов (серых дронов)
-            creeps.forEach(c => {
-                ctx.fillStyle = '#555566';
-                ctx.strokeStyle = '#888899';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-
-                // Полоска здоровья крипа
-                if (c.hp < c.maxHp) {
-                    ctx.fillStyle = '#ff0055';
-                    ctx.fillRect(c.x - 15, c.y - c.radius - 8, 30 * (c.hp / c.maxHp), 4);
+            const now = Date.now();
+            if (keys['MouseLeft'] && now - localPlayer.lastShot > localPlayer.shotDelay) { 
+                let bX = localPlayer.x + localPlayer.aimX * localPlayer.radius;
+                let bY = localPlayer.y + localPlayer.aimY * localPlayer.radius;
+                let baseBullet = { x: bX, y: bY, vx: localPlayer.aimX * 13, vy: localPlayer.aimY * 13, damage: localPlayer.damage, ownerId: localId, ownerColor: localPlayer.color, color: localPlayer.bulletColor, isExplosive: shopUpgrades.isExplosive, hasLeech: shopUpgrades.hasLeech };
+                
+                if (shopUpgrades.hasShotgun) {
+                    let angles = [-0.25, 0, 0.25];
+                    angles.forEach(ang => {
+                        let cos = Math.cos(ang), sin = Math.sin(ang);
+                        let vx = (localPlayer.aimX * cos - localPlayer.aimY * sin) * 13;
+                        let vy = (localPlayer.aimX * sin + localPlayer.aimY * cos) * 13;
+                        let b = { ...baseBullet, vx, vy };
+                        bullets.push(b); socket.emit('shoot', b);
+                    });
+                } else {
+                    bullets.push(baseBullet); socket.emit('shoot', baseBullet);
                 }
-            });
-
-            // Отрисовка снарядов
-            bullets.forEach(b => {
-                ctx.fillStyle = b.color;
-                ctx.shadowBlur = 8;
-                ctx.shadowColor = b.color;
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.shadowBlur = 0;
-            });
-
-            // Отрисовка игроков
-            for (let id in players) {
-                let p = players[id];
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Линия направления взгляда
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(p.x, p.y);
-                ctx.lineTo(p.x + p.aimX * 25, p.y + p.aimY * 25);
-                ctx.stroke();
-
-                // Идентификация
-                ctx.fillStyle = '#fff';
-                ctx.font = '12px monospace';
-                ctx.textAlign = 'center';
-                ctx.fillText(id === myId ? 'ВЫ' : 'АГЕНТ', p.x, p.y - p.radius - 12);
+                localPlayer.lastShot = now; 
             }
 
-            ctx.restore();
+            items.forEach((item) => { 
+                if (Math.hypot(localPlayer.x - item.x, localPlayer.y - item.y) < localPlayer.radius + 13) { 
+                    if (item.type === 'heal') localPlayer.hp = Math.min(100, localPlayer.hp + 25); 
+                    if (item.type === 'damage') localPlayer.damage += 1; 
+                    if (item.type === 'speed') localPlayer.speed = Math.min(9.5, localPlayer.speed + 0.15); 
+                    localPlayer.lvl += 1; localPlayer.credits += 5;
+                    socket.emit('removeItem', item.id); items = items.filter(i => i.id !== item.id);
+                } 
+            });
+            
+            if (localPlayer.hp <= 0) { 
+                localPlayer.hp = 100; localPlayer.speed = localPlayer.baseSpeed; localPlayer.damage = 12; localPlayer.lvl = 1; localPlayer.credits = 0;
+                shopUpgrades = { fireRateLvl: 0, hasShotgun: false, isExplosive: false, hasLeech: false, hasDash: false };
+                localPlayer.x = Math.random()*3000 + 500; localPlayer.y = Math.random()*2000 + 200; 
+            }
+            socket.emit('playerUpdate', { x: localPlayer.x, y: localPlayer.y, aimX: localPlayer.aimX, aimY: localPlayer.aimY, skillActive: localPlayer.skillActive, skillCD: localPlayer.skillCD, hp: localPlayer.hp, speed: localPlayer.speed, damage: localPlayer.damage, lvl: localPlayer.lvl, credits: localPlayer.credits });
+        }
+        function updateUI() {
+            if (!localId) return;
+            document.getElementById('local-hp').style.width = localPlayer.hp + '%'; document.getElementById('local-hp-text').innerText = Math.round(localPlayer.hp);
+            document.getElementById('local-lvl').innerText = localPlayer.lvl; document.getElementById('local-cr').innerText = localPlayer.credits;
+            document.getElementById('local-dmg').innerText = localPlayer.damage; document.getElementById('local-spd').innerText = localPlayer.speed.toFixed(1);
+            document.getElementById('local-skill').innerText = localPlayer.skillActive ? "ACTIVE" : (localPlayer.skillCD > 0 ? `CD:${Math.ceil(localPlayer.skillCD/1000)}s` : "READY");
+            document.getElementById('local-cd').style.width = localPlayer.skillActive ? '100%' : (localPlayer.skillCD > 0 ? (localPlayer.skillCD / (localPlayer.color === '#ff0055' ? 10000 : 12000)) * 100 : 0) + '%';
+            
+            for (let id in players) { 
+                if (id !== localId) { 
+                    let enemy = players[id]; 
+                    document.getElementById('enemy-hp').style.width = enemy.hp + '%'; document.getElementById('enemy-hp-text').innerText = Math.round(enemy.hp); 
+                    document.getElementById('enemy-lvl').innerText = enemy.lvl || 1; document.getElementById('enemy-cr').innerText = enemy.credits || 0;
+                    document.getElementById('enemy-dmg').innerText = enemy.damage || 12; document.getElementById('enemy-spd').innerText = enemy.speed ? enemy.speed.toFixed(1) : "5.5";
+                    document.getElementById('enemy-skill').innerText = enemy.skillActive ? "ACTIVE" : (enemy.skillCD > 0 ? `CD:${Math.ceil(enemy.skillCD/1000)}s` : "READY"); document.getElementById('enemy-cd').style.width = enemy.skillActive ? '100%' : '0%'; 
+                } 
+            }
         }
 
-        // Запуск цикла анимации
-        requestAnimationFrame(draw);
+        function gameLoop() {
+            updateLocalMovement(); ctx.clearRect(0, 0, canvas.width, canvas.height);
+            currentCamX = Math.max(0, Math.min(WORLD.width - canvas.width, localPlayer.x - canvas.width / 2)); currentCamY = Math.max(0, Math.min(WORLD.height - canvas.height, localPlayer.y - canvas.height / 2));
+            ctx.save(); ctx.translate(-currentCamX, -currentCamY);
+
+            anomalies.forEach(a => { let cls = {toxic: 'rgba(255, 0, 85, 0.05)', sludge: 'rgba(255, 200, 0, 0.04)', heal: 'rgba(0, 255, 85, 0.04)'}, strs = {toxic: '#ff0055', sludge: '#ffaa00', heal: '#00ff55'}; ctx.fillStyle = cls[a.type]; ctx.beginPath(); ctx.arc(a.x, a.y, a.radius, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = strs[a.type]; ctx.lineWidth = 2; ctx.stroke(); });
+            ctx.fillStyle = '#050510'; ctx.strokeStyle = '#2d2d66'; ctx.lineWidth = 3; buildings.forEach(b => { ctx.fillRect(b.x, b.y, b.w, b.h); ctx.strokeRect(b.x, b.y, b.w, b.h); });
+            items.forEach(i => { ctx.beginPath(); ctx.arc(i.x, i.y, 13, 0, Math.PI*2); ctx.fillStyle = i.color; ctx.fill(); ctx.fillStyle = '#000'; ctx.font = 'bold 9px Arial'; ctx.fillText(i.label, i.x-6, i.y+3); });
+            
+            creeps.forEach(c => {
+                ctx.save(); ctx.shadowBlur = 8; ctx.shadowColor = c.state === 'chase' ? '#ff3333' : '#666666'; ctx.fillStyle = c.state === 'chase' ? '#5a1a1a' : '#3a3a44'; ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = c.state === 'chase' ? '#ff3333' : '#888888'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+                ctx.fillStyle = '#ff3333'; ctx.fillRect(c.x - 14, c.y - 21, 28 * (c.hp / 35), 3);
+            });
+
+            bullets.forEach((b, i) => {
+                b.x += b.vx; b.y += b.vy;
+                let hitWall = buildings.some(w => b.x > w.x && b.x < w.x + w.w && b.y > w.y && b.y < w.y + w.h);
+                if (hitWall || b.x < 0 || b.x > WORLD.width || b.y < 0 || b.y > WORLD.height) {
+                    for (let p = 0; p < 5; p++) particles.push({ x: b.x, y: b.y, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4, radius: Math.random()*2+1, color: b.isExplosive ? '#ffaa00' : '#2d2d66', alpha: 1, decay: 0.04 });
+                    bullets.splice(i, 1); return;
+                }
+                ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = b.color; ctx.lineWidth = b.isExplosive ? 6 : 4; ctx.strokeStyle = b.color; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx * 0.4, b.y - b.vy * 0.4); ctx.stroke(); ctx.restore();
+            });
+
+            particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.alpha -= p.decay; ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill(); ctx.restore(); if(p.alpha<=0) particles.splice(i,1); });
+
+            ctx.save(); ctx.shadowBlur = localPlayer.skillActive ? 30 : 15; ctx.shadowColor = localPlayer.color; ctx.beginPath(); ctx.arc(localPlayer.x, localPlayer.y, localPlayer.radius, 0, Math.PI*2); ctx.fillStyle = localPlayer.color; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+            ctx.beginPath(); ctx.moveTo(localPlayer.x, localPlayer.y); ctx.lineTo(localPlayer.x + localPlayer.aimX*26, localPlayer.y + localPlayer.aimY*26); ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
+
+            for (let id in players) { if (id !== localId) { let p = players[id]; ctx.save(); ctx.shadowBlur = p.skillActive ? 30 : 15; ctx.shadowColor = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fillStyle = p.color; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.aimX*26, p.y + p.aimY*26); ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke(); if(p.color === '#00ffcc' && p.skillActive) { ctx.beginPath(); ctx.arc(p.x, p.y, p.radius+15, 0, Math.PI*2); ctx.strokeStyle = '#00ffcc'; ctx.lineWidth=3; ctx.stroke(); } } }
+            if(localPlayer.color === '#00ffcc' && localPlayer.skillActive) { ctx.beginPath(); ctx.arc(localPlayer.x, localPlayer.y, localPlayer.radius+15, 0, Math.PI*2); ctx.strokeStyle = '#00ffcc'; ctx.lineWidth=3; ctx.stroke(); }
+            ctx.restore(); updateUI(); requestAnimationFrame(gameLoop);
+        }
+        gameLoop();
     </script>
 </body>
 </html>
