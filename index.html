@@ -172,7 +172,7 @@
                 } 
             }
         }
-        function gameLoop() {
+                function gameLoop() {
             updateLocalMovement(); ctx.clearRect(0, 0, canvas.width, canvas.height);
             currentCamX = Math.max(0, Math.min(WORLD.width - canvas.width, localPlayer.x - canvas.width / 2)); currentCamY = Math.max(0, Math.min(WORLD.height - canvas.height, localPlayer.y - canvas.height / 2));
             ctx.save(); ctx.translate(-currentCamX, -currentCamY);
@@ -199,7 +199,8 @@
                 ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = b.color; ctx.lineWidth = 4; ctx.strokeStyle = b.color; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx * 0.4, b.y - b.vy * 0.4); ctx.stroke(); ctx.restore();
             });
 
-            particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.alpha -= p.decay; ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill(); restore(); if(p.alpha<=0) particles.splice(i,1); });
+            // ИСПРАВЛЕНО: Добавлен потерянный ctx перед restore()
+            particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.alpha -= p.decay; ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill(); ctx.restore(); if(p.alpha<=0) particles.splice(i,1); });
 
             ctx.save(); ctx.shadowBlur = localPlayer.skillActive ? 30 : 15; ctx.shadowColor = localPlayer.color; ctx.beginPath(); ctx.arc(localPlayer.x, localPlayer.y, localPlayer.radius, 0, Math.PI*2); ctx.fillStyle = localPlayer.color; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
             ctx.beginPath(); ctx.moveTo(localPlayer.x, localPlayer.y); ctx.lineTo(localPlayer.x + localPlayer.aimX*26, localPlayer.y + localPlayer.aimY*26); ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
