@@ -2,8 +2,15 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, { 
-    cors: { origin: "*" },
+    cors: { 
+        origin: "https://onrender.com",
+        methods: ["GET", "POST"],
+        credentials: true
+    },
     transports: ['websocket']
+});
+const path = require('path');
+
 });
 const path = require('path');
 
