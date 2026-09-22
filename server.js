@@ -2,11 +2,8 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, { 
-    cors: { 
-        origin: "*", // Полностью открываем доступ для браузеров
-        methods: ["GET", "POST"]
-    },
-    transports: ['websocket', 'polling'] // Разрешаем запасной вариант подключения, если сокеты режутся
+    cors: { origin: "*", methods: ["GET", "POST"] },
+    transports: ['websocket', 'polling']
 });
 const path = require('path');
 
@@ -21,18 +18,18 @@ let items = [];
 
 let anomalies = [];
 const anomalyTypes = [{type:'toxic'}, {type:'sludge'}, {type:'heal'}];
-for (let i = 0; i < 15; i++) {
+for (let i = 0; i < 16; i++) {
     anomalies.push({
-        x: Math.random() * (WORLD.width - 500) + 250, y: Math.random() * (WORLD.height - 500) + 250, radius: Math.random() * 180 + 120,
+        x: Math.random() * (WORLD.width - 600) + 300, y: Math.random() * (WORLD.height - 600) + 300, radius: Math.random() * 180 + 130,
         type: anomalyTypes[Math.floor(Math.random() * anomalyTypes.length)].type
     });
 }
 
 let buildings = [];
-for (let i = 0; i < 40; i++) {
+for (let i = 0; i < 42; i++) {
     buildings.push({
         x: Math.random() * (WORLD.width - 300) + 150, y: Math.random() * (WORLD.height - 300) + 150,
-        w: Math.random() * 150 + 80, h: Math.random() * 150 + 80
+        w: Math.random() * 160 + 90, h: Math.random() * 160 + 90
     });
 }
 
@@ -56,7 +53,7 @@ io.on('connection', (socket) => {
     players[socket.id] = {
         id: socket.id, x: spawn.x, y: spawn.y, radius: 20,
         color: isFirst ? '#ff0055' : '#00ffcc', bulletColor: isFirst ? '#ff66aa' : '#66ffea',
-        aimX: isFirst ? 1 : -1, aimY: 0, hp: 100, skillActive: false, skillCD: 0
+        aimX: isFirst ? 1 : -1, aimY: 0, hp: 100, maxHp: 100, speed: 5.5, baseSpeed: 5.5, damage: 12, skillActive: false, skillCD: 0
     };
 
     socket.emit('init', { id: socket.id, world: WORLD, anomalies, buildings, players });
@@ -67,7 +64,7 @@ io.on('connection', (socket) => {
             players[socket.id].x = data.x; players[socket.id].y = data.y;
             players[socket.id].aimX = data.aimX; players[socket.id].aimY = data.aimY;
             players[socket.id].skillActive = data.skillActive; players[socket.id].skillCD = data.skillCD;
-            players[socket.id].hp = data.hp;
+            players[socket.id].hp = data.hp; players[socket.id].speed = data.speed; players[socket.id].damage = data.damage;
         }
     });
 
@@ -76,11 +73,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        delete players[socket.id];
-        io.emit('playerLeft', socket.id);
+        delete players[socket.id]; io.emit('playerLeft', socket.id);
     });
 });
 
+// Серверный игровой цикл обсчета физики
 setInterval(() => {
     bullets.forEach((b, index) => {
         let sandevistanActive = Object.values(players).some(p => p.color === '#ff0055' && p.skillActive);
@@ -102,8 +99,20 @@ setInterval(() => {
             }
         }
     });
+
+    // ИСПРАВЛЕННЫЙ СТАБИЛЬНЫЙ СПАВН ЧИПОВ УЛУЧШЕНИЙ
+    if (items.length < 35 && Math.random() < 0.02) {
+        let ix = Math.random() * (WORLD.width - 100) + 50;
+        let iy = Math.random() * (WORLD.height - 100) + 50;
+        let bad = buildings.some(b => ix > b.x && ix < b.x + b.w && iy > b.y && iy < b.y + b.h);
+        if (!bad) {
+            const types = [{t:'heal', c:'#00ff55', l:'HP'}, {t:'damage', c:'#ffaa00', l:'DMG'}, {t:'speed', c:'#d200ff', l:'SPD'}];
+            let s = types[Math.floor(Math.random() * types.length)];
+            items.push({ x: ix, y: iy, type: s.t, color: s.c, label: s.l, id: Math.random().toString(36).substr(2, 5) });
+        }
+    }
     io.emit('stateUpdate', { players, bullets, items });
 }, 1000 / 60);
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => { console.log(`Server online on port ${PORT}`); });
+http.listen(PORT, '0.0.0.0', () => { console.log(`Server running on port ${PORT}`); });
